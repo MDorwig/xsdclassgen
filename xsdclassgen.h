@@ -1,64 +1,145 @@
-class CxmlType ;
+class xsdType ;
 
 #include <list>
 #include <string>
 
-class CxmlElement
+class xsdElement
 {
 public:
-	CxmlElement(const xmlChar * name,CxmlType * type,const xmlChar * ftypename)
+	xsdElement(const char * name,xsdType * type)
 	{
-		m_name = (const char*)name;
-		m_typename = (const char*)ftypename;
+		m_name = name;
 		m_type = type ;
 		m_minOccurs=0;
 		m_maxOccurs=0;
 	}
 
-	~CxmlElement()
+	~xsdElement()
 	{
 	}
 
+	const char * getName()
+	{
+		return m_name.c_str();
+	}
+
+	void GenCode(FILE * out,int indent);
+
 	std::string m_name ;
-	std::string m_typename;
-	CxmlType *  m_type ;
+	xsdType *  m_type ;
 	int         m_minOccurs;
 	int         m_maxOccurs;
 };
 
-class CxmlEnum
+class xsdEnum
 {
 	char * m_Value ;
 };
 
 enum typetag
 {
-	type_int,
+	type_forward, // forward reference to an unknown type
 	type_string,
-	type_typename,
+	type_boolean,
+	type_decimal,
+	type_float,
+	type_double,
+	type_duration,
+	type_dateTime,
+	type_time,
+	type_date,
+	type_gYearMonth,
+	type_gYear,
+	type_gMonthDay,
+	type_gDay,
+	type_gMonth,
+	type_hexBinary,
+	type_base64Binary,
+	type_anyURI,
+	type_QName,
+	type_NOTATION,
+	type_normalizedString,
+	type_token,
+	type_language,
+	type_NMTOKEN,
+	type_NMTOKENS,
+	type_Name,
+	type_NCName,
+	type_ID,
+	type_IDREF,
+	type_IDREFS,
+	type_ENTITY,
+	type_ENTITIES,
+	type_integer,
+	type_nonPositiveInteger,
+	type_negativeInteger,
+	type_long,
+	type_int,
+	type_short,
+	type_byte,
+	type_nonNegativeInteger,
+	type_unsignedLong,
+	type_unsignedInt,
+	type_unsignedShort,
+	type_unsignedByte,
+	type_positiveInteger,
+	type_yearMonthDuration,
+	type_dayTimeDuration,
+	type_dateTimeStamp,
 	type_complex,
 	type_simple,
 	type_restriction,
 	type_sequence,
 };
 
-class CxmlType
+extern void UpdateType(xsdType * oldtype,xsdType * newtype);
+
+typedef std::list<xsdType*>::iterator typeListIterator;
+
+class xsdTypeList : public std::list<xsdType*>
 {
 public:
-	CxmlType(const xmlChar * name,typetag tag)
+	xsdTypeList()
 	{
-		m_name = (const char*)name;
-		m_tag = tag ;
 	}
 
-	std::string m_name ;
-	typetag m_tag;
+	void Add(xsdType * type) ;
+	xsdType * Find(const char * name);
 };
 
-class CxmlRestriction: public CxmlType
+
+class xsdType
 {
 public:
-	CxmlRestriction() : CxmlType(BAD_CAST "",type_restriction)
+	xsdType(const char * name,typetag tag)
+	{
+		if (name == NULL)
+			name = "";
+		m_name = name;
+		m_tag = tag ;
+		m_alltypes.Add(this);
+	}
+
+	const char * getName()
+	{
+		return m_name.c_str();
+	}
+
+	bool isAnonym()
+	{
+		return *getName() == 0 ;
+	}
+	virtual void GenCode(FILE * out,int indent,const char * elemname);
+	std::string m_name ;
+	typetag m_tag;
+
+	static xsdTypeList m_alltypes;
+};
+
+class xsdRestriction: public xsdType
+{
+public:
+	xsdRestriction() : xsdType("",type_restriction)
 	{
 		m_minExclusive = 0 ;
 		m_minInclusive = 0 ;
@@ -71,6 +152,8 @@ public:
 		m_maxLength = 0 ;
 		m_whiteSpace = 0 ;
 	}
+	void GenCode(FILE * out,int indent,const char * elemname);
+
 	std::string m_base ;
 	int m_minExclusive;
 	int m_minInclusive;
@@ -85,65 +168,58 @@ public:
 	int m_whiteSpace;
 };
 
-class CxmlSimpleType : public CxmlType
+class xsdSimpleType : public xsdType
 {
 public:
-	CxmlSimpleType(const xmlChar * name) : CxmlType(name,type_simple)
+	xsdSimpleType(const char * name) : xsdType(name,type_simple)
 	{
 		m_rest = NULL;
 	}
+	void GenCode(FILE * out,int indent,const char * elemname);
 	union
 	{
-		CxmlRestriction * m_rest;
+		xsdRestriction * m_rest;
 	};
 };
 
-class CxmlSequenceType : public CxmlType
+class xsdSequenceType : public xsdType
 {
 public:
-	CxmlSequenceType() : CxmlType(BAD_CAST "",type_sequence)
+	xsdSequenceType() : xsdType("",type_sequence)
 	{
 
 	}
-
-	std::list<CxmlElement *> m_list ;
+	void GenCode(FILE * out,int indent,const char * elemname);
+	std::list<xsdElement *> m_list ;
 };
 
-class CxmlChoiceType : public CxmlType
+class xsdChoiceType : public xsdType
 {
 public:
+	void GenCode(FILE * out,int indent);
 };
 
-class CxmlComplexType : public CxmlType
+class xsdComplexType : public xsdType
 {
 public:
-	CxmlComplexType(const xmlChar * name,typetag tag) : CxmlType(name,tag)
+	xsdComplexType(const char * name,typetag tag) : xsdType(name,tag)
 	{
 		m_sequence = NULL;
 		m_choice   = NULL;
 	}
+	void GenCode(FILE * out,int indent,const char * elemname);
 	union
 	{
-		CxmlSequenceType * m_sequence;
-		CxmlChoiceType   * m_choice;
+		xsdSequenceType * m_sequence;
+		xsdChoiceType   * m_choice;
 	};
 };
 
-class CxmlSchema
+class xsdSchema
 {
 public:
-	CxmlSchema()
+	xsdSchema()
 	{
 
 	}
-	void addElement(CxmlElement * e)
-	{
-		m_elements.push_back(e);
-	}
-	void addType(CxmlType * t)
-	{
-		m_types.push_back(t);
-	}
-	std::list<CxmlElement *> m_elements;
-	std::list<CxmlType    *> m_types;
 };

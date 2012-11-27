@@ -41,6 +41,8 @@ enum xsd_keyword
 	xsd_maxLength,
 	xsd_whiteSpace,
 	xsd_pattern,
+	xsd_targeNamespace,
+	xsd_xmlns,
 };
 
 struct xsd_keyword_entry
@@ -76,11 +78,13 @@ struct xsd_keyword_entry keywordtable[] = {
     ENTRY(sequence),
     ENTRY(simpleType),
     ENTRY(string),
+  	ENTRY(targeNamespace),
     ENTRY(totalDigits),
     ENTRY(type),
     ENTRY(union),
     ENTRY(value),
     ENTRY(whiteSpace),
+  	ENTRY(xmlns),
 };
 
 int xsdkeywordcmp(const void * p1,const void * p2)
@@ -99,13 +103,109 @@ xsd_keyword Lookup(const xmlChar * name)
 	return kw ;
 }
 
-CxmlElement * ParseElement(xmlNodePtr element)
+xsdTypeList xsdType::m_alltypes;
+
+std::list<xsdElement *> elementlist;
+
+void xsdTypeList::Add(xsdType * type)
+{
+	xsdType * t = Find(type->getName());
+	if (t != NULL)
+	{
+		if (t->m_tag == type_forward)
+		{
+			UpdateType(t,type);
+			remove(t);
+			push_back(type);
+		}
+	}
+	else
+	{
+		push_back(type);
+	}
+}
+
+xsdType * xsdTypeList::Find(const char * name)
+{
+	typeListIterator ti ;
+	if (*name == 0)
+		return NULL;
+	for (ti = begin() ; ti != end() ; ti++)
+	{
+		xsdType * type = *ti ;
+		if (!type->isAnonym() && type->m_name == name)
+			return type ;
+	}
+	return NULL;
+}
+
+void AddElement(xsdElement * elem)
+{
+	printf("AddElement %s\n",elem->getName());
+	elementlist.push_back(elem);
+}
+
+void UpdateType(std::list<xsdElement*> elemlist,xsdType * oldtype, xsdType * newtype)
+{
+	std::list<xsdElement*>::iterator it;
+	for (it = elemlist.begin() ; it != elemlist.end() ; it++)
+	{
+		xsdElement * elem = *it ;
+		if (elem->m_type == oldtype)
+		{
+			printf("Update type for Element %s to %s\n",elem->getName(),newtype->getName());
+			elem->m_type = newtype ;
+		}
+	}
+}
+
+void UpdateType(xsdSequenceType * seq,xsdType * oldtype, xsdType * newtype)
+{
+	UpdateType(seq->m_list,oldtype,newtype);
+}
+
+void UpdateType(xsdComplexType * type,xsdType * oldtype, xsdType * newtype)
+{
+	if (type->m_sequence != NULL)
+		UpdateType(type->m_sequence,oldtype,newtype);
+}
+
+void UpdateType(xsdType * oldtype,xsdType * newtype)
+{
+	std::list<xsdElement*>::iterator ei;
+	for (ei = elementlist.begin() ; ei != elementlist.end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		if (elem->m_type == oldtype)
+			elem->m_type = newtype;
+	}
+	typeListIterator ti;
+	for (ti = xsdType::m_alltypes.begin() ; ti != xsdType::m_alltypes.end() ; ti++)
+	{
+		xsdType * type = *ti;
+		switch(type->m_tag)
+		{
+			case	type_complex:
+				UpdateType((xsdComplexType*)type,oldtype,newtype);
+			break ;
+
+			default:
+			break ;
+		}
+	}
+}
+
+xsdComplexType * ParseComplexType(xmlNodePtr type);
+xsdSimpleType  * ParseSimpleType(xmlNodePtr type);
+
+xsdElement * ParseElement(xmlNodePtr element)
 {
 	xmlNodePtr child = element->children;
 	xmlAttrPtr attr  = element->properties;
-	CxmlElement * xmlelem = NULL;
-	CxmlType    * xmltype = NULL;
-	const char * etypename=NULL;
+	xsdElement * xsdelem     = NULL;
+	xsdType    * xsdtype     = NULL;
+	const char * xsdname     = NULL ;
+	const char * xsdtypename = NULL;
 	int minOccurs = 0 ;
 	int maxOccurs = 0 ;
 	while(attr != NULL)
@@ -115,31 +215,41 @@ CxmlElement * ParseElement(xmlNodePtr element)
 		switch(kw)
 		{
 			case	xsd_name:
-				xmlelem = new CxmlElement(child->content,NULL,BAD_CAST "");
+				xsdname = (const char*)child->content;
 			break ;
+
 			case	xsd_type:
-				etypename = (const char*)child->content;
+			{
+				const char * cp ;
+				xsdtypename = (const char*)child->content;
+				cp = strchr(xsdtypename,':');
+				if (cp == NULL)
+					cp = xsdtypename;
+				else
+					cp++;
+				xsdtype = xsdType::m_alltypes.Find(cp);
+				if (xsdtype == NULL)
+				{
+					xsdtype = new xsdType(cp,type_forward);
+				}
+			}
 			break ;
+
 			case	xsd_minOccurs:
 				minOccurs = strtol((const char*)child->content,NULL,10);
 			break ;
+
 			case	xsd_maxOccurs:
 				maxOccurs = strtol((const char*)child->content,NULL,10);
 			break ;
+
 			default:
 				printf("attribute %s was not expected\n",attr->name);
 			break ;
 		}
 		attr = attr->next;
 	}
-	if (xmlelem != NULL)
-	{
-		if (etypename != NULL)
-			xmlelem->m_typename = etypename;
-		xmlelem->m_type = xmltype;
-		xmlelem->m_maxOccurs = maxOccurs;
-		xmlelem->m_minOccurs = minOccurs;
-	}
+	child = element->children;
 	while(child != NULL)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -150,18 +260,35 @@ CxmlElement * ParseElement(xmlNodePtr element)
 				case	xsd_element:
 				break ;
 
+				case	xsd_complexType:
+					if (xsdtype != NULL)
+					{
+						printf("element %s already has a type\n",xsdname);
+					}
+					else
+					{
+						xsdtype = ParseComplexType(child);
+					}
+				break ;
+
+				case	xsd_simpleType:
+					xsdtype = ParseSimpleType(child);
+				break ;
+
 				default:
+					printf("%s was not expected in <element> declaration\n",child->name);
 				break ;
 			}
 		}
 		child = child->next;
 	}
-	return xmlelem;
+	xsdelem = new xsdElement(xsdname,xsdtype);
+	return xsdelem;
 }
 
-CxmlSequenceType * ParseSequence(xmlNodePtr sequence)
+xsdSequenceType * ParseSequence(xmlNodePtr sequence)
 {
-	CxmlSequenceType * xmlseq = new CxmlSequenceType();
+	xsdSequenceType * xmlseq = new xsdSequenceType();
 	xmlNodePtr child = sequence->children;
 	xsd_keyword kw ;
 	while(child != NULL)
@@ -185,17 +312,17 @@ CxmlSequenceType * ParseSequence(xmlNodePtr sequence)
 	return xmlseq;
 }
 
-CxmlChoiceType * ParseChoice(xmlNodePtr choice)
+xsdChoiceType * ParseChoice(xmlNodePtr choice)
 {
-	CxmlChoiceType * xmltype = NULL;
+	xsdChoiceType * xmltype = NULL;
 	return xmltype;
 }
 
-CxmlComplexType * ParseComplexType(xmlNodePtr type)
+xsdComplexType * ParseComplexType(xmlNodePtr type)
 {
 	xmlNodePtr child = type->children;
 	xmlAttrPtr attr  = type->properties;
-	CxmlComplexType * xmltype = NULL;
+	const char * xsdtypename = "";
 	xsd_keyword kw ;
 	while(attr != NULL)
 	{
@@ -204,13 +331,15 @@ CxmlComplexType * ParseComplexType(xmlNodePtr type)
 		switch(kw)
 		{
 			case	xsd_name:
-				xmltype = new CxmlComplexType(child->content,type_complex);
+				xsdtypename = (const char*)child->content;
 			break ;
+
 			default:
 			break ;
 		}
 		attr = attr->next;
 	}
+	xsdComplexType * newtype = new xsdComplexType(xsdtypename,type_complex);
 	child = type->children;
 	while(child != NULL)
 	{
@@ -220,11 +349,12 @@ CxmlComplexType * ParseComplexType(xmlNodePtr type)
 			switch(kw)
 			{
 				case	xsd_sequence:
-					xmltype->m_sequence = ParseSequence(child);
+					newtype->m_sequence = ParseSequence(child);
+					newtype->m_sequence->m_name = newtype->getName();
 				break ;
 
 				case	xsd_choice:
-					xmltype->m_choice = ParseChoice(child);
+					newtype->m_choice = ParseChoice(child);
 				break ;
 
 				default:
@@ -233,7 +363,7 @@ CxmlComplexType * ParseComplexType(xmlNodePtr type)
 		}
 		child = child->next;
 	}
-	return xmltype;
+	return newtype;
 }
 
 const char * ParseEnum(xmlNodePtr ptr)
@@ -252,11 +382,26 @@ const char * ParseEnum(xmlNodePtr ptr)
 	return "";
 }
 
-CxmlRestriction * ParseRestriction(xmlNodePtr rest)
+int getIntAttr(xmlNodePtr ptr,const char * name)
+{
+	for (xmlAttrPtr attr = ptr->properties ; attr != NULL ; attr = attr->next)
+	{
+		if (strcmp((const char*)attr->name,name) == 0)
+		{
+			if (attr->children != NULL && attr->children->content != NULL)
+			{
+				return strtol((const char*)attr->children->content,NULL,10);
+			}
+		}
+	}
+	return 0 ;
+}
+
+xsdRestriction * ParseRestriction(xmlNodePtr rest)
 {
 	xmlNodePtr child = rest->children;
 	xmlAttrPtr attr  = rest->properties;
-	CxmlRestriction * xmlrest = new CxmlRestriction();
+	xsdRestriction * xmlrest = new xsdRestriction();
 	xsd_keyword kw ;
 	while(attr != NULL)
 	{
@@ -285,27 +430,41 @@ CxmlRestriction * ParseRestriction(xmlNodePtr rest)
 				break ;
 
 				case	xsd_minExclusive:
+					xmlrest->m_minExclusive = getIntAttr(child,"value");
 				break ;
 
 				case	xsd_maxExclusive:
+					xmlrest->m_maxExclusive = getIntAttr(child,"value");;
 				break ;
 
 				case	xsd_minInclusive:
+					xmlrest->m_minInclusive = getIntAttr(child,"value");;
 				break ;
 
 				case	xsd_maxInclusive:
+					xmlrest->m_maxInclusive = getIntAttr(child,"value");;
 				break ;
 
 				case	xsd_totalDigits:
+					xmlrest->m_totalDigits = getIntAttr(child,"value");
 				break ;
+
 				case	xsd_fractionDigits:
+					xmlrest->m_fractionDigits= getIntAttr(child,"value");
 				break ;
+
 				case xsd_length:
+					xmlrest->m_length = getIntAttr(child,"value");
 				break ;
+
 				case xsd_minLength:
+					xmlrest->m_minLength = getIntAttr(child,"value");
 				break ;
+
 				case xsd_maxLength:
+					xmlrest->m_maxLength = getIntAttr(child,"value");
 				break ;
+
 				default:
 				break ;
 			}
@@ -315,9 +474,10 @@ CxmlRestriction * ParseRestriction(xmlNodePtr rest)
 	return xmlrest;
 }
 
-CxmlSimpleType * ParseSimpleType(xmlNodePtr type)
+xsdSimpleType * ParseSimpleType(xmlNodePtr type)
 {
-	CxmlSimpleType * xmltype = NULL;
+	xsdSimpleType * xsdtype = NULL;
+	const char * xsdtypename = "" ;
 	xmlNodePtr child = type->children;
 	xmlAttrPtr attr  = type->properties;
 	xsd_keyword kw ;
@@ -328,14 +488,14 @@ CxmlSimpleType * ParseSimpleType(xmlNodePtr type)
 		switch(kw)
 		{
 			case	xsd_name:
-				xmltype = new CxmlSimpleType(child->content);
+				xsdtypename = (const char*)child->content;
 			break ;
 			default:
 			break ;
 		}
 		attr = attr->next;
 	}
-	child = type->children;
+	xsdtype = new xsdSimpleType(xsdtypename);
 	while(child != NULL)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -344,7 +504,7 @@ CxmlSimpleType * ParseSimpleType(xmlNodePtr type)
 			switch(kw)
 			{
 				case	xsd_restriction:
-					xmltype->m_rest = ParseRestriction(child);
+					xsdtype->m_rest = ParseRestriction(child);
 				break ;
 
 				default:
@@ -353,30 +513,51 @@ CxmlSimpleType * ParseSimpleType(xmlNodePtr type)
 		}
 		child = child->next;
 	}
-	return xmltype;
+	return xsdtype;
 }
 
-CxmlSchema * ParseSchema(xmlNodePtr schema)
+xsdSchema * ParseSchema(xmlNodePtr schema)
 {
-	CxmlSchema * xmlschema = new CxmlSchema();
-	xmlNodePtr child = schema->children;
+	xsdSchema * xmlschema = new xsdSchema();
+	xmlAttrPtr attr = schema->properties;
+	xmlNodePtr child ;
+	xmlNsPtr xmlns ;
+	xsd_keyword kw;
+
+	while(attr != NULL)
+	{
+		kw = Lookup(attr->name);
+		printf("Schema attr %s %s\n",attr->name,attr->children->content);
+		switch(kw)
+		{
+			case	xsd_targeNamespace:
+			break ;
+			case	xsd_xmlns:
+			break ;
+			default:
+			break ;
+		}
+		attr = attr->next;
+	}
+	xmlns = schema->nsDef;
+	child = schema->children;
 	while(child != NULL)
 	{
 		if (child->type == XML_ELEMENT_NODE)
 		{
-			xsd_keyword kw = Lookup(child->name) ;
+			kw = Lookup(child->name) ;
 			switch(kw)
 			{
 				case	xsd_element:
-					xmlschema->addElement(ParseElement(child));
+					AddElement(ParseElement(child));
 				break ;
 
 				case	xsd_complexType:
-					xmlschema->addType(ParseComplexType(child));
+					ParseComplexType(child);
 				break ;
 
 				case	xsd_simpleType:
-					xmlschema->addType(ParseSimpleType(child));
+					ParseSimpleType(child);
 				break ;
 
 				default:
@@ -388,12 +569,99 @@ CxmlSchema * ParseSchema(xmlNodePtr schema)
 	return xmlschema;
 }
 
+void Indent(FILE * out,int indent)
+{
+	while(--indent >= 0)
+	{
+		fputs("  ",out); // 2 Blanks
+		fflush(out);
+	}
+}
+
+void xsdType::GenCode(FILE * out,int indent,const char * elemname)
+{
+	const char * name ;
+	switch(m_tag)
+	{
+		case  type_float:					name = "float";					break ;
+		case	type_double:				name = "double";				break ;
+		case	type_byte:    			name = "char";					break ;
+		case	type_unsignedByte: 	name = "unsigned char";	break ;
+		case	type_int:						name = "int";						break ;
+		case	type_long:    			name = "long";					break ;
+		case	type_unsignedInt: 	name = "unsigned int";	break ;
+		case	type_boolean:				name = "bool";					break ;
+		case	type_short:					name = "short";					break ;
+		case  type_unsignedShort:	name = "unsigned short";break ;
+		default:               		name = getName();    		break ;
+	}
+	if (elemname)
+	{
+		Indent(out,indent);
+		fprintf(out,"%s %s;\n",name,elemname);
+	}
+}
+
+void xsdRestriction::GenCode(FILE * out,int indent,const char * elemname)
+{
+	const char * n = "int";
+	Indent(out,indent);
+	if (!m_base.empty())
+		n = m_base.c_str();
+	fprintf(out,"%s %s;\n",n,elemname);
+}
+
+void xsdSimpleType::GenCode(FILE * out,int indent,const char * elemname)
+{
+	if (m_rest != NULL)
+		m_rest->GenCode(out,indent,elemname);
+	else
+		xsdType::GenCode(out,indent,elemname);
+}
+
+void xsdSequenceType::GenCode(FILE * out,int indent,const char * elemname)
+{
+	std::list<xsdElement*>::iterator ei;
+	Indent(out,indent);
+	fprintf(out,"struct %s\n",getName());
+	Indent(out,indent);
+	fprintf(out,"{\n");
+	indent++;
+	for (ei = m_list.begin() ; ei != m_list.end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		elem->GenCode(out,indent);
+	}
+	indent--;
+	Indent(out,indent);
+	fprintf(out,"} %s;\n\n",elemname == NULL ? "" : elemname);
+}
+
+void xsdComplexType::GenCode(FILE * out,int indent,const char * elemname)
+{
+	if (m_sequence != NULL)
+	{
+		m_sequence->GenCode(out,indent,elemname);
+	}
+}
+
+void xsdElement::GenCode(FILE *out,int indent)
+{
+	m_type->GenCode(out,indent,getName());
+}
+
 int main(int argc, char * argv[])
 {
-	CxmlSchema * xmlschema = NULL;
+	xsdSchema * xmlschema = NULL;
 	xmlDocPtr doc = xmlReadFile(argv[1],"utf-8",0);
 	if (doc != NULL)
 	{
+		new xsdType("int",type_int);
+		new xsdType("string",type_string);
+		new xsdType("boolean",type_boolean);
+		new xsdType("decimal",type_decimal);
+		new xsdType("float",type_float);
+		new xsdType("double",type_double);
 		xmlNodePtr child;
 		child = doc->xmlChildrenNode ;
 		if (child != NULL)
@@ -409,41 +677,11 @@ int main(int argc, char * argv[])
 				break ;
 			}
 		}
-		std::list<CxmlType*>::iterator ti ;
-		for (ti = xmlschema->m_types.begin() ; ti != xmlschema->m_types.end() ; ti++)
+		typeListIterator ti ;
+		int indent = 0 ;
+		for (ti = xsdType::m_alltypes.begin() ; ti != xsdType::m_alltypes.end() ; ti++)
 		{
-			switch((*ti)->m_tag)
-			{
-				case	type_int:
-				break ;
-				case	type_string:
-				break ;
-				case	type_typename:
-				break ;
-				case	type_complex:
-				{
-					CxmlComplexType * c = (CxmlComplexType*)*ti ;
-					printf("struct %s {\n",c->m_name.c_str());
-					if (c->m_sequence != NULL)
-					{
-						CxmlSequenceType * seq = c->m_sequence;
-						std::list<CxmlElement*>::iterator ei;
-						for (ei = seq->m_list.begin() ; ei != seq->m_list.end() ; ei++)
-						{
-							CxmlElement * elem = *ei ;
-							printf("\t%s %s;\n",elem->m_name.c_str(),elem->m_typename.c_str());
-						}
-					}
-					printf("};\n");
-				}
-				break ;
-				case	type_simple:
-				break ;
-				case	type_restriction:
-				break ;
-				case	type_sequence:
-				break ;
-			}
+			(*ti)->GenCode(stdout,indent,NULL);
 		}
 	}
 }
