@@ -6,6 +6,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <libxml2/libxml/parser.h>
 #include "xsdclassgen.h"
 
@@ -103,9 +104,13 @@ xsd_keyword Lookup(const xmlChar * name)
 	return kw ;
 }
 
-xsdTypeList xsdType::m_alltypes;
+int xsdType::m_count;
+xsdTypeList m_alltypes;
+xsdElementList elementlist;
 
-std::list<xsdElement *> elementlist;
+#ifdef UPDATE_TYPE
+void UpdateType(xsdType * oldtype,xsdType * newtype);
+#endif
 
 void xsdTypeList::Add(xsdType * type)
 {
@@ -114,9 +119,16 @@ void xsdTypeList::Add(xsdType * type)
 	{
 		if (t->m_tag == type_forward)
 		{
+#ifdef UPDATE_TYPE
 			UpdateType(t,type);
 			remove(t);
+			delete t ;
 			push_back(type);
+#endif
+		}
+		else
+		{
+			printf("%s is already declared\n",type->getName());
 		}
 	}
 	else
@@ -145,6 +157,9 @@ void AddElement(xsdElement * elem)
 	elementlist.push_back(elem);
 }
 
+#ifdef UPDATE_TYPE
+void UpdateType(xsdComplexType * type,xsdType * oldtype, xsdType * newtype);
+
 void UpdateType(std::list<xsdElement*> elemlist,xsdType * oldtype, xsdType * newtype)
 {
 	std::list<xsdElement*>::iterator it;
@@ -155,6 +170,18 @@ void UpdateType(std::list<xsdElement*> elemlist,xsdType * oldtype, xsdType * new
 		{
 			printf("Update type for Element %s to %s\n",elem->getName(),newtype->getName());
 			elem->m_type = newtype ;
+		}
+		else
+		{
+			switch(elem->m_type->m_tag)
+			{
+				case	type_complex:
+					UpdateType((xsdComplexType*)elem->m_type,oldtype,newtype);
+				break ;
+
+				default:
+				break ;
+			}
 		}
 	}
 }
@@ -172,15 +199,9 @@ void UpdateType(xsdComplexType * type,xsdType * oldtype, xsdType * newtype)
 
 void UpdateType(xsdType * oldtype,xsdType * newtype)
 {
-	std::list<xsdElement*>::iterator ei;
-	for (ei = elementlist.begin() ; ei != elementlist.end() ; ei++)
-	{
-		xsdElement * elem = *ei ;
-		if (elem->m_type == oldtype)
-			elem->m_type = newtype;
-	}
+	UpdateType(elementlist,oldtype,newtype);
 	typeListIterator ti;
-	for (ti = xsdType::m_alltypes.begin() ; ti != xsdType::m_alltypes.end() ; ti++)
+	for (ti = m_alltypes.begin() ; ti != m_alltypes.end() ; ti++)
 	{
 		xsdType * type = *ti;
 		switch(type->m_tag)
@@ -194,6 +215,7 @@ void UpdateType(xsdType * oldtype,xsdType * newtype)
 		}
 	}
 }
+#endif
 
 xsdComplexType * ParseComplexType(xmlNodePtr type);
 xsdSimpleType  * ParseSimpleType(xmlNodePtr type);
@@ -205,7 +227,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 	xsdElement * xsdelem     = NULL;
 	xsdType    * xsdtype     = NULL;
 	const char * xsdname     = NULL ;
-	const char * xsdtypename = NULL;
+	const char * xsdtypename = "";
 	int minOccurs = 0 ;
 	int maxOccurs = 0 ;
 	while(attr != NULL)
@@ -223,15 +245,8 @@ xsdElement * ParseElement(xmlNodePtr element)
 				const char * cp ;
 				xsdtypename = (const char*)child->content;
 				cp = strchr(xsdtypename,':');
-				if (cp == NULL)
-					cp = xsdtypename;
-				else
-					cp++;
-				xsdtype = xsdType::m_alltypes.Find(cp);
-				if (xsdtype == NULL)
-				{
-					xsdtype = new xsdType(cp,type_forward);
-				}
+				if (cp != NULL)
+					xsdtypename = ++cp ;
 			}
 			break ;
 
@@ -261,9 +276,9 @@ xsdElement * ParseElement(xmlNodePtr element)
 				break ;
 
 				case	xsd_complexType:
-					if (xsdtype != NULL)
+					if (*xsdtypename != 0)
 					{
-						printf("element %s already has a type\n",xsdname);
+						printf("element %s already has a type %s\n",xsdname,xsdtypename);
 					}
 					else
 					{
@@ -272,7 +287,10 @@ xsdElement * ParseElement(xmlNodePtr element)
 				break ;
 
 				case	xsd_simpleType:
-					xsdtype = ParseSimpleType(child);
+					if (*xsdtypename != 0)
+						printf("element %s already has a type %s\n",xsdname,xsdtypename);
+					else
+						xsdtype = ParseSimpleType(child);
 				break ;
 
 				default:
@@ -282,7 +300,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 		}
 		child = child->next;
 	}
-	xsdelem = new xsdElement(xsdname,xsdtype);
+	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype);
 	return xsdelem;
 }
 
@@ -496,6 +514,7 @@ xsdSimpleType * ParseSimpleType(xmlNodePtr type)
 		attr = attr->next;
 	}
 	xsdtype = new xsdSimpleType(xsdtypename);
+	child = type->children;
 	while(child != NULL)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -505,6 +524,14 @@ xsdSimpleType * ParseSimpleType(xmlNodePtr type)
 			{
 				case	xsd_restriction:
 					xsdtype->m_rest = ParseRestriction(child);
+#if 0
+					if (*xsdtypename == 0 && !xsdtype->m_rest->m_enumvalues.empty())
+					{
+						char enumname[10];
+						sprintf(enumname,"e_an%04d",++nextenum);
+						xsdtype->m_name = enumname ;
+					}
+#endif
 				break ;
 
 				default:
@@ -553,11 +580,11 @@ xsdSchema * ParseSchema(xmlNodePtr schema)
 				break ;
 
 				case	xsd_complexType:
-					ParseComplexType(child);
+					m_alltypes.Add(ParseComplexType(child));
 				break ;
 
 				case	xsd_simpleType:
-					ParseSimpleType(child);
+					m_alltypes.Add(ParseSimpleType(child));
 				break ;
 
 				default:
@@ -580,6 +607,16 @@ void Indent(FILE * out,int indent)
 
 void xsdType::GenCode(FILE * out,int indent,const char * elemname)
 {
+	const char * name = getCppName();
+	if (elemname)
+	{
+		Indent(out,indent);
+		fprintf(out,"%s %s;\n",name,elemname);
+	}
+}
+
+const char * xsdType::getCppName()
+{
 	const char * name ;
 	switch(m_tag)
 	{
@@ -593,30 +630,46 @@ void xsdType::GenCode(FILE * out,int indent,const char * elemname)
 		case	type_boolean:				name = "bool";					break ;
 		case	type_short:					name = "short";					break ;
 		case  type_unsignedShort:	name = "unsigned short";break ;
+		case  type_string:        name = "std::string";   break ;
 		default:               		name = getName();    		break ;
 	}
-	if (elemname)
-	{
-		Indent(out,indent);
-		fprintf(out,"%s %s;\n",name,elemname);
-	}
+	return name ;
 }
 
-void xsdRestriction::GenCode(FILE * out,int indent,const char * elemname)
+void xsdRestriction::GenCode(FILE * out,int indent,const char * elemname,const char * simplename)
 {
-	const char * n = "int";
-	Indent(out,indent);
-	if (!m_base.empty())
-		n = m_base.c_str();
-	fprintf(out,"%s %s;\n",n,elemname);
+	if (!m_enumvalues.empty())
+	{
+		Indent(out,indent);
+		fprintf(out,"enum %s\n",simplename);
+		Indent(out,indent);
+		fprintf(out,"{\n");
+		std::list<std::string>::iterator si ;
+		for (si = m_enumvalues.begin() ; si != m_enumvalues.end() ; si++)
+		{
+			Indent(out,indent+1);
+			fprintf(out,"%s,\n",(*si).c_str());
+		}
+		Indent(out,indent);
+		fprintf(out,"} %s ;\n",elemname);
+	}
+	else
+	{
+		Indent(out,indent);
+		fprintf(out,"%s %s;\n",m_base.c_str(),elemname);
+	}
 }
 
 void xsdSimpleType::GenCode(FILE * out,int indent,const char * elemname)
 {
-	if (m_rest != NULL)
-		m_rest->GenCode(out,indent,elemname);
-	else
-		xsdType::GenCode(out,indent,elemname);
+	if (!m_impl)
+	{
+		m_impl = true;
+		if (m_rest != NULL)
+			m_rest->GenCode(out,indent,elemname,getName());
+		else
+			xsdType::GenCode(out,indent,elemname);
+	}
 }
 
 void xsdSequenceType::GenCode(FILE * out,int indent,const char * elemname)
@@ -639,29 +692,159 @@ void xsdSequenceType::GenCode(FILE * out,int indent,const char * elemname)
 
 void xsdComplexType::GenCode(FILE * out,int indent,const char * elemname)
 {
-	if (m_sequence != NULL)
+	if (!m_impl)
 	{
-		m_sequence->GenCode(out,indent,elemname);
+		m_impl = true;
+		if (m_sequence != NULL)
+		{
+			m_sequence->GenCode(out,indent,elemname);
+		}
 	}
 }
 
 void xsdElement::GenCode(FILE *out,int indent)
 {
-	m_type->GenCode(out,indent,getName());
+	int stop ;
+	if (m_name == "Update")
+	{
+		stop = 1 ;
+	}
+	if (m_type != NULL)
+		m_type->GenCode(out,indent,getName());
+	else
+	{
+		xsdType * type = m_alltypes.Find(m_typename.c_str());
+		Indent(out,indent);
+		if (type == NULL)
+		{
+			printf("Element %s has unknown type %s\n",getName(),m_typename.c_str());
+			fprintf(out,"%s %s;\n",m_typename.c_str(),getName());
+		}
+		else
+		{
+			fprintf(out,"%s %s;\n",type->getCppName(),getName());
+		}
+	}
+}
+
+void CalcDependency(xsdElementList & elist, xsdTypeList & list);
+
+void CalcDependen(xsdSequenceType * seq,xsdTypeList & list)
+{
+	CalcDependency(seq->m_list,list);
+}
+
+void CalcDependeny(xsdComplexType * type,xsdTypeList & list)
+{
+	if (type->m_sequence != NULL)
+	{
+		CalcDependen(type->m_sequence,list);
+	}
+}
+
+void CalcDependency(xsdSimpleType* type,xsdTypeList & list)
+{
+	if (type->m_name.empty())
+		return ;
+	if (type->m_rest != NULL && !type->m_rest->m_enumvalues.empty())
+	{
+		if (!type->m_indeplist)
+		{
+			printf("add dependency %s\n",type->getName());
+			type->m_indeplist = true ;
+			list.push_back(type);
+		}
+	}
+}
+
+void CalcDependency(xsdElementList & elist, xsdTypeList & list)
+{
+	elementIterator eli ;
+	typeListIterator tli ;
+	for (eli = elist.begin() ; eli != elist.end(); eli++)
+	{
+		xsdElement * elem = *eli ;
+		xsdType * type = elem->m_type;
+		if (elem->m_name == "Update")
+			printf("CalcDependency for %s\n",elem->getName());
+		if (type == NULL)
+		{
+			if (!elem->m_typename.empty())
+			{
+				type = m_alltypes.Find(elem->m_typename.c_str());
+				if (type == NULL)
+				{
+					printf("element %s: type %s not found\n",elem->getName(),elem->m_typename.c_str());
+				}
+			}
+			else
+			{
+				printf("element %s has not type\n",elem->getName());
+			}
+		}
+		if (type != NULL)
+		{
+			switch(type->m_tag)
+			{
+				case	type_complex:
+					if (!type->m_indeplist)
+					{
+						type->m_indeplist = true ;
+						CalcDependeny((xsdComplexType*)type,list);
+						printf("add dependency %s\n",type->getName());
+						list.push_back(type);
+					}
+				break ;
+
+				case	type_simple:
+					CalcDependency((xsdSimpleType*)type,list);
+				break ;
+
+				default:
+				break ;
+			}
+		}
+	}
 }
 
 int main(int argc, char * argv[])
 {
 	xsdSchema * xmlschema = NULL;
-	xmlDocPtr doc = xmlReadFile(argv[1],"utf-8",0);
+	const char * xsdfilename = NULL;
+	char hfilename[256];
+
+	for (int i = 1 ; i < argc ; i++)
+	{
+		xsdfilename = argv[i];
+		break ;
+	}
+	if (xsdfilename == NULL)
+	{
+		printf("no inputfile\n");
+		exit(1);
+	}
+	strcpy(hfilename,xsdfilename);
+	char * cp = strrchr(hfilename,'.');
+	if (cp != NULL)
+		strcpy(cp,".h");
+	else
+		strcat(hfilename,".h");
+
+	xmlDocPtr doc = xmlReadFile(xsdfilename,"utf-8",0);
 	if (doc != NULL)
 	{
-		new xsdType("int",type_int);
-		new xsdType("string",type_string);
-		new xsdType("boolean",type_boolean);
-		new xsdType("decimal",type_decimal);
-		new xsdType("float",type_float);
-		new xsdType("double",type_double);
+		FILE * outfile = fopen(hfilename,"w");
+		if (outfile == NULL)
+		{
+			printf("can't create %s - %s\n",hfilename,strerror(errno));
+			exit(2);
+		}
+		m_alltypes.Add(new xsdType("int",type_int,true));
+		m_alltypes.Add(new xsdType("string",type_string,true));
+		m_alltypes.Add(new xsdType("boolean",type_boolean,true));
+		m_alltypes.Add(new xsdType("decimal",type_decimal,true));
+		m_alltypes.Add(new xsdType("float",type_float,true));
+		m_alltypes.Add(new xsdType("double",type_double,true));
 		xmlNodePtr child;
 		child = doc->xmlChildrenNode ;
 		if (child != NULL)
@@ -677,13 +860,18 @@ int main(int argc, char * argv[])
 				break ;
 			}
 		}
+		xsdTypeList deplist;
+		CalcDependency(elementlist,deplist);
+
 		typeListIterator ti ;
-		int indent = 0 ;
-		for (ti = xsdType::m_alltypes.begin() ; ti != xsdType::m_alltypes.end() ; ti++)
+		for (ti = deplist.begin() ; ti != deplist.end() ; ti++)
 		{
-			(*ti)->GenCode(stdout,indent,NULL);
+			xsdType * type = *ti ;
+			if (!type->isAnonym())
+				type->GenCode(outfile,1,"");
 		}
 	}
+	return 0 ;
 }
 
 

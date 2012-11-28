@@ -6,9 +6,10 @@ class xsdType ;
 class xsdElement
 {
 public:
-	xsdElement(const char * name,xsdType * type)
+	xsdElement(const char * name,const char * ftypename,xsdType * type)
 	{
 		m_name = name;
+		m_typename = ftypename;
 		m_type = type ;
 		m_minOccurs=0;
 		m_maxOccurs=0;
@@ -26,10 +27,18 @@ public:
 	void GenCode(FILE * out,int indent);
 
 	std::string m_name ;
+	std::string m_typename;
 	xsdType *  m_type ;
 	int         m_minOccurs;
 	int         m_maxOccurs;
 };
+
+typedef std::list<xsdElement*>::iterator elementIterator ;
+
+class xsdElementList : public std::list<xsdElement *>
+{
+
+} ;
 
 class xsdEnum
 {
@@ -92,8 +101,6 @@ enum typetag
 	type_sequence,
 };
 
-extern void UpdateType(xsdType * oldtype,xsdType * newtype);
-
 typedef std::list<xsdType*>::iterator typeListIterator;
 
 class xsdTypeList : public std::list<xsdType*>
@@ -111,19 +118,27 @@ public:
 class xsdType
 {
 public:
-	xsdType(const char * name,typetag tag)
+	xsdType(const char * name,typetag tag,bool builtin = false)
 	{
 		if (name == NULL)
 			name = "";
 		m_name = name;
 		m_tag = tag ;
-		m_alltypes.Add(this);
+		m_id = ++m_count;
+		m_impl = builtin ;
+		m_indeplist = false ;
+	}
+
+	virtual ~xsdType()
+	{
 	}
 
 	const char * getName()
 	{
 		return m_name.c_str();
 	}
+
+	const char * getCppName() ;
 
 	bool isAnonym()
 	{
@@ -132,8 +147,10 @@ public:
 	virtual void GenCode(FILE * out,int indent,const char * elemname);
 	std::string m_name ;
 	typetag m_tag;
-
-	static xsdTypeList m_alltypes;
+	int     m_id ;
+	bool    m_impl;
+	bool    m_indeplist;
+	static int m_count;
 };
 
 class xsdRestriction: public xsdType
@@ -152,7 +169,7 @@ public:
 		m_maxLength = 0 ;
 		m_whiteSpace = 0 ;
 	}
-	void GenCode(FILE * out,int indent,const char * elemname);
+	void GenCode(FILE * out,int indent,const char * elemname,const char * simplename);
 
 	std::string m_base ;
 	int m_minExclusive;
@@ -190,7 +207,7 @@ public:
 
 	}
 	void GenCode(FILE * out,int indent,const char * elemname);
-	std::list<xsdElement *> m_list ;
+	xsdElementList m_list ;
 };
 
 class xsdChoiceType : public xsdType
