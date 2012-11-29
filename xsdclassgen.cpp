@@ -205,14 +205,15 @@ xsdNamespace * FindNamespace(const char * prefix)
 	return NULL;
 }
 
-void AddNamespace(const char * prefix,const char * href)
+xsdNamespace * AddNamespace(const char * prefix,const char * href)
 {
 	xsdNamespace * ns = FindNamespace(prefix);
 	if (ns == NULL)
 	{
 		ns = new xsdNamespace(prefix,href);
-		namespaces.push_back(ns);
+		namespaces.push_front(ns);
 	}
+	return ns ;
 }
 
 xsdType * FindType(const char * name)
@@ -384,7 +385,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 	xsdElement * xsdelem     = NULL;
 	xsdType    * xsdtype     = NULL;
 	const char * xsdname     = NULL;
-	const char * xsdtypename = NULL;
+	xsdTypename* xsdtypename = NULL;
 	int minOccurs = 0 ;
 	int maxOccurs = 0 ;
 
@@ -399,8 +400,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 
 			case	xsd_type:
 			{
-				xsdtypename = getContent(attr->children);
-				xsdtype = FindType(xsdtypename);
+				xsdtypename = new xsdTypename(getContent(attr->children));
 			}
 			break ;
 
@@ -424,9 +424,6 @@ xsdElement * ParseElement(xmlNodePtr element)
 			xsd_keyword kw = Lookup(child->name) ;
 			switch(kw)
 			{
-				case	xsd_element:
-				break ;
-
 				case	xsd_complexType:
 					if (xsdtype != NULL)
 						printf("element %s already has a type %s\n",xsdname,xsdtype->getName());
@@ -632,7 +629,7 @@ xsdRestriction * ParseRestriction(xmlNodePtr rest)
 		switch(kw)
 		{
 			case	xsd_base:
-				xmlrest->m_base = getContent(attr->children);
+				xmlrest->m_base = FindType(getContent(attr->children));
 			break ;
 			default:
 			break ;
@@ -835,7 +832,11 @@ xsdSchema * ParseSchema(xmlNodePtr schema)
 			switch(kw)
 			{
 				case	xsd_import:
+				{
+					xsdNamespace * ns = targetNamespace;
 					ParseImport(child);
+					targetNamespace = ns ;
+				}
 				break ;
 
 				case	xsd_element:
@@ -918,11 +919,14 @@ void xsdRestriction::GenCode(FILE * out,int indent,const char * elemname,const c
 	}
 	else
 	{
-		Indent(out,indent);
-		if (*elemname == 0)
-			fprintf(out,"typedef %s %s;\n",m_base.c_str(),simplename);
-		else
-			fprintf(out,"%s %s;\n",m_base.c_str(),elemname);
+		if (m_base != NULL)
+		{
+			Indent(out,indent);
+			if (*elemname == 0)
+				fprintf(out,"typedef %s %s;\n",m_base->getCppName(),simplename);
+			else
+				fprintf(out,"%s %s;\n",m_base->getCppName(),elemname);
+		}
 	}
 }
 
@@ -1020,19 +1024,22 @@ void xsdComplexType::GenCode(FILE * out,int indent,const char * elemname,const c
 void xsdElement::GenCode(FILE *out,int indent)
 {
 	if (m_type != NULL)
-		m_type->GenCode(out,indent,getName(),"");
+		m_type->GenCode(out,indent,getCppName(),"");
 	else
 	{
-		xsdType * type = FindType(m_typename.c_str());
-		Indent(out,indent);
-		if (type == NULL)
+		if (m_typename != NULL)
 		{
-			printf("Element %s has unknown type %s\n",getName(),m_typename.c_str());
-			fprintf(out,"%s %s;\n",m_typename.c_str(),getName());
-		}
-		else
-		{
-			fprintf(out,"%s %s;\n",type->getCppName(),getCppName());
+			xsdType * type = FindType(m_typename->m_name.c_str());
+			Indent(out,indent);
+			if (type == NULL)
+			{
+				printf("Element %s has unknown type %s\n",getName(),m_typename->m_name.c_str());
+				fprintf(out,"%s %s;\n",m_typename->m_name.c_str(),getCppName());
+			}
+			else
+			{
+				fprintf(out,"%s %s;\n",type->getCppName(),getCppName());
+			}
 		}
 	}
 }
@@ -1101,12 +1108,12 @@ void CalcDependency(xsdElementList & elist, xsdTypeList & list)
 		printf("CalcDependency for %s\n",elem->getName());
 		if (type == NULL)
 		{
-			if (!elem->m_typename.empty())
+			if (elem->m_typename != NULL)
 			{
-				type = FindType(elem->m_typename.c_str());
+				type = FindType(elem->m_typename->m_name.c_str());
 				if (type == NULL)
 				{
-					printf("element %s: type %s not found\n",elem->getName(),elem->m_typename.c_str());
+					printf("element %s: type %s not found\n",elem->getName(),elem->m_typename->m_name.c_str());
 				}
 			}
 			else
@@ -1207,32 +1214,35 @@ int main(int argc, char * argv[])
 			}
 		}
 		xsdTypeList deplist;
-
-#if 0
-		CalcDependency(elementlist,deplist);
-
-		typeListIterator ti ;
-		for (ti = deplist.begin() ; ti != deplist.end() ; ti++)
+		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
+		{
+			xsdNamespace * ns = *nsi ;
+			CalcDependency(ns->m_elements,deplist);
+		}
+		for (typeIterator ti = deplist.begin() ; ti != deplist.end() ; ti++)
 		{
 			xsdType * type = *ti ;
 			if (!type->isAnonym())
 				type->GenCode(outfile,1,"",type->getCppName());
 		}
-		elementIterator ei ;
-		for (ei = elementlist.begin() ; ei != elementlist.end(); ei++)
+		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
 		{
-			xsdElement * elem = *ei ;
-			if (elem->m_type != NULL)
+			xsdNamespace * ns = *nsi ;
+			elementIterator ei ;
+			for (ei = ns->m_elements.begin() ; ei != ns->m_elements.end(); ei++)
 			{
-				if (!elem->m_type->m_impl)
+				xsdElement * elem = *ei ;
+				if (elem->m_type != NULL)
 				{
-					if (elem->m_type->m_name.empty())
-						elem->m_type->m_name = elem->m_name;
-					elem->m_type->GenCode(outfile,1,"","");
+					if (!elem->m_type->m_impl)
+					{
+						if (elem->m_type->m_name.empty())
+							elem->m_type->m_name = elem->m_name;
+						elem->m_type->GenCode(outfile,1,"","");
+					}
 				}
 			}
 		}
-#endif
 	}
 	return 0 ;
 }

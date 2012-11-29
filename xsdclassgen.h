@@ -35,19 +35,55 @@ std::string MakeIdentifier(const char * prefix,const char * name)
 	{
 		char c = *name++;
 		if (!isalnum(c) && c != '_')
-			c = '_' ;
-		str += c ;
+		{
+			char n[8];
+			if (*name)
+				sprintf(n,"_x%02x_",c);
+			else
+				sprintf(n,"_x%02x",c);
+			str += n ;
+		}
+		else
+			str += c ;
 	}
 	return str ;
 }
 
+class xsdTypename // für vorwärtsdeclarationen
+{
+public:
+	xsdTypename(const char * name)
+	{
+		if (strchr(name,':') != NULL)
+		{
+			while(*name != ':')
+				m_ns += *name++;
+			name++;
+		}
+		m_name       = name;
+		m_cname      = MakeIdentifier("",name);
+	}
+
+	const char * getName()
+	{
+		return m_name.c_str();
+	}
+
+	const char * getCppName()
+	{
+		return m_cname.c_str();
+	}
+
+	std::string m_ns ;
+	std::string m_name ;
+	std::string m_cname;
+};
+
 class xsdElement
 {
 public:
-	xsdElement(const char * name,const char * ftypename,xsdType * type)
+	xsdElement(const char * name,xsdTypename * typname,xsdType * type)
 	{
-		if (ftypename == NULL)
-			ftypename = "";
 		if (strchr(name,':') != NULL)
 		{
 			while(*name != ':')
@@ -56,7 +92,7 @@ public:
 		}
 		m_name       = name;
 		m_cname      = MakeIdentifier("m_",name);
-		m_typename   = ftypename;
+		m_typename   = typname;
 		m_type       = type ;
 		m_minOccurs  = 0;
 		m_maxOccurs  = 0;
@@ -81,7 +117,7 @@ public:
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
-	std::string m_typename;
+	xsdTypename * m_typename;
 	xsdType *   m_type ;
 	int         m_minOccurs;
 	int         m_maxOccurs;
@@ -251,10 +287,11 @@ public:
 		m_minLength = 0 ;
 		m_maxLength = 0 ;
 		m_whiteSpace = 0 ;
+		m_base = NULL;
 	}
 	void GenCode(FILE * out,int indent,const char * elemname,const char * simplename);
 
-	std::string m_base ;
+	xsdType * m_base ;
 	int m_minExclusive;
 	int m_minInclusive;
 	int m_maxExclusive;
