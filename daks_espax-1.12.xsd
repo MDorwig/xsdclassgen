@@ -1,0 +1,1512 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- =======================================================================
+   ********************************
+   *** DAKS_ESPA-X Version 1.12 ***
+   ********************************
+
+  Copyright:  (c) 2012
+              tetronik GmbH AEN
+              Silberbachstrasse 10
+              65232 Taunusstein
+              Germany
+              www.tetronik.com
+
+  Authors:    Heiko Trapp, 
+              Hartmut Luetz-Hawranke,
+              Sergej Koehn
+
+  Status:     June 14th, 2012
+
+  History:
+  ========
+    2012-08-27 Parameter <SECURITY-ENTRYANN> and <SECURITY-ENTRYTXT> added to <PARAMS1>.
+               Parameter <SGL_CONNTYPE> and <CP-SECURITYCODE> added to <START1>.
+               New command <CMD.GRPMBR-CTRL> added.
+    2012-06-14 <DEL_RP_ANN> added to <RECPLAY>
+               <CS-OPERATOR> changed to <CS-MEMBERTYPE>, enumMemberOperator {Yes,No} changed to enumMemberType {Operator,Master,Standard}
+               Value 'DAKS-Conference' of numeration enumProcessType changed to 'Conference'
+		2012-05-31 Ver. 1.12
+               PIN confirmation features for single calls added.
+							 Parameter for emergency announcements added.
+							 Parameter for activation of DAKS conferences added.
+							 Parameter for PA channel selection of group member added. 
+							 MLPP-Level for session specific groups added.
+							 Announcement recording and control monitor over single calls added.
+							 Server status info incl. number of registered SIP phones added.
+		2011-10-06 Alarm features for subscriber connection control in transparent mode added ( for Classic DAKS V7.6x ).
+							 Parameter for speakerphone control in single calls and in session specific groups added.
+    2010-09-01 <SGL_REQTIMANN> added to "typeParams1"
+               New type "typeEvent1" defined
+               <EVENT1> added to <DAKS_ESPA-X>
+               "Positive+Time" added to "enumConfirmations"
+    2009-10-28 "Wrong person" corrected to "Wrong Person".
+               "dx:strAccessID" modified
+    2009-10-12 "Transfered" of element type "enumCallStatus" corrected to
+               "Transferred".
+    2009-09-18 Initial version based on Version 1.00,  dated 06-22-2009
+======================================================================= -->
+
+<xs:schema  xmlns="http://ns.tetronik.com/DAKS_ESPA-X" 
+            xmlns:dx="http://ns.tetronik.com/DAKS_ESPA-X" 
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xmlns:xs="http://www.w3.org/2001/XMLSchema"
+            xmlns:ex="http://ns.espa-x.org/espa-x"
+            elementFormDefault="qualified"
+            targetNamespace="http://ns.tetronik.com/DAKS_ESPA-X"> 
+  
+  <!-- Copyright -->
+  <xs:annotation>
+    <xs:documentation>
+      DAKS_ESPA-X Version 1.12.
+      Copyright 20012 tetronik GmbH AEN.
+      All rights reserved.
+    </xs:documentation>
+  </xs:annotation>
+
+  <!-- Import standard ESPA-X data types -->
+  <xs:import namespace="http://ns.espa-x.org/espa-x" schemaLocation="http://schema.espa-x.org/espa-x100.xsd"/>
+  
+  <!-- Deklaration of enumerations -->
+  
+  <xs:simpleType      name="enumDAKSVersions">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="1.10"/>
+			<xs:enumeration value="1.11"/>
+			<xs:enumeration value="1.12"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="enumProcessTypes">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Standard"/>
+      <xs:enumeration value="Conference"/>
+      <xs:enumeration value="Emergency-Announcement"/>
+      <xs:enumeration value="SGL_RecPlay"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumBusyActions">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Nothing"/>
+      <xs:enumeration value="Camp-on"/>
+      <xs:enumeration value="Emerg-Disc"/>
+      <xs:enumeration value="Intrusion"/>
+      <xs:enumeration value="Emerg-Intr"/>
+    </xs:restriction>
+  </xs:simpleType>
+	
+  <xs:simpleType      name="enumCnctCtrlMemberBusyActions">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Default"/>
+      <xs:enumeration value="CampOn"/>
+      <xs:enumeration value="Intr"/>
+      <xs:enumeration value="EmergencyIntr"/>
+			<xs:enumeration value="ForcedRel"/>
+    </xs:restriction>
+  </xs:simpleType>
+	
+  <xs:simpleType      name="enumCnctCtrlTrunkBusyActions">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Default"/>
+      <xs:enumeration value="EmergencyIntr"/>
+			<xs:enumeration value="ForcedRel"/>
+    </xs:restriction>
+  </xs:simpleType>
+	
+
+  <xs:simpleType      name="enumKeyIndications">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="0"/>
+      <xs:enumeration value="1"/>
+      <xs:enumeration value="2"/>
+      <xs:enumeration value="3"/>
+      <xs:enumeration value="4"/>
+      <xs:enumeration value="5"/>
+      <xs:enumeration value="6"/>
+      <xs:enumeration value="7"/>
+      <xs:enumeration value="8"/>
+      <xs:enumeration value="9"/>
+      <xs:enumeration value="*"/>
+      <xs:enumeration value="#"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumKeyIndicationsEx">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="0"/>
+      <xs:enumeration value="1"/>
+      <xs:enumeration value="2"/>
+      <xs:enumeration value="3"/>
+      <xs:enumeration value="4"/>
+      <xs:enumeration value="5"/>
+      <xs:enumeration value="6"/>
+      <xs:enumeration value="7"/>
+      <xs:enumeration value="8"/>
+      <xs:enumeration value="9"/>
+      <xs:enumeration value="*"/>
+      <xs:enumeration value="#"/>
+      <xs:enumeration value="Off"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumMLPPLevels">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Routine"/>
+      <xs:enumeration value="Priority"/>
+      <xs:enumeration value="Immediate"/>
+      <xs:enumeration value="Flash"/>
+      <xs:enumeration value="Flash Override"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="enumConfirmations">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="None"/>
+      <xs:enumeration value="Positive"/>
+      <xs:enumeration value="Negative"/>
+      <xs:enumeration value="Wrong Person"/>
+      <xs:enumeration value="Callback"/>
+      <xs:enumeration value="Positive+Time"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumRecPlayControls">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="None"/>
+      <xs:enumeration value="Record"/>
+      <xs:enumeration value="Record End"/>
+      <xs:enumeration value="Record OK"/>
+      <xs:enumeration value="Play"/>
+      <xs:enumeration value="Play End"/>
+      <xs:enumeration value="RecPlay End"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="enumMemberType">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Operator"/>
+      <xs:enumeration value="Master"/>
+      <xs:enumeration value="Standard"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumSpeakerPhoneControls">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="Yes"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumPinNeutral">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="Yes"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumAutoCallbacks">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="Yes"/>
+      <xs:enumeration value="SPVC"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumValidChars">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Any"/>
+      <xs:enumeration value="Numeric"/>
+      <xs:enumeration value="Keypad"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="enumCallHandles">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Update"/>
+      <xs:enumeration value="Dial"/>
+      <xs:enumeration value="Alerting"/>
+      <xs:enumeration value="Accept"/>
+      <xs:enumeration value="Busy"/>
+      <xs:enumeration value="Invalid"/>
+      <xs:enumeration value="Disconnect"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumCallType">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Voice"/>
+      <xs:enumeration value="Data"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumCallStatus">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Timedout"/>
+      <xs:enumeration value="Setup"/>
+      <xs:enumeration value="Ringing"/>
+      <xs:enumeration value="Busy"/>
+      <xs:enumeration value="Invalid"/>
+      <xs:enumeration value="NotResponded"/>
+      <xs:enumeration value="Connected"/>
+      <xs:enumeration value="Consulting"/>
+      <xs:enumeration value="Returned"/>
+      <xs:enumeration value="Transferred"/>
+      <xs:enumeration value="Conferenced"/>
+      <xs:enumeration value="Closed"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="enumDialogStatus">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Started"/>  
+      <xs:enumeration value="Input"/>  
+      <xs:enumeration value="Ended"/>  
+      <xs:enumeration value="Cancelled"/>  
+      <xs:enumeration value="Timeout"/>  
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumDialogInfos">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Standard"/>
+      <xs:enumeration value="Enchanced"/>
+      <xs:enumeration value="All"/>
+    </xs:restriction>
+  </xs:simpleType>  
+  
+  <xs:simpleType      name="enumControlNotify">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Enabled"/>
+      <xs:enumeration value="Disabled"/>
+    </xs:restriction>
+  </xs:simpleType>  
+  
+  <xs:simpleType      name="enumInfotelProfiles">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Off"/>
+      <xs:enumeration value="1"/>
+      <xs:enumeration value="2"/>
+      <xs:enumeration value="3"/>
+      <xs:enumeration value="4"/>
+      <xs:enumeration value="5"/>
+      <xs:enumeration value="6"/>
+      <xs:enumeration value="7"/>
+      <xs:enumeration value="8"/>
+      <xs:enumeration value="9"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="enumMbrCtrlCommand">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="CANCELCALL"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strSingleChar">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="0" />
+      <xs:maxLength   value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strIdentifier">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strCtrlIdentifier">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="10"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strDialogRef">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="8"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="strTitle">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="10"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType      name="strLongTitle">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="16"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strSecurityCode">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="16"/>
+      <xs:pattern     value="[0-9]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!--  
+  <xs:simpleType      name="strResourceName">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="24"/>
+    </xs:restriction>
+  </xs:simpleType>
+ -->
+  <xs:simpleType      name="strURL">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="1024"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strConType">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="3"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType     name="strAnnData">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="0" />
+      <xs:maxLength   value="64000"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType    name="strTTVAnnData">
+    <xs:restriction  base="xs:string">
+      <xs:minLength   value="0" />
+      <xs:maxLength   value="16348"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType  name="strPlayDuration">
+    <xs:restriction  base="xs:string">
+      <xs:pattern     value="[0-9]{1,4}[sc]{1}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strNumericKey">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="1"/>
+      <xs:pattern     value="[0-9]"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType  name="strAccessID">
+    <xs:restriction  base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="4"/>
+      <xs:pattern     value="[0-9]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType  name="strPIN">
+    <xs:restriction  base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="6"/>
+      <xs:pattern     value="[0-9]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+
+  <xs:simpleType     name="uiDialThru">
+    <xs:restriction   base="xs:unsignedInt">
+      <xs:minInclusive value="1" />
+      <xs:maxInclusive value="3"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType     name="uiNoOfWaitpos">
+    <xs:restriction   base="xs:unsignedInt">
+      <xs:minInclusive value="1" />
+      <xs:maxInclusive value="99"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType     name="uiTTVLanguage">
+    <xs:restriction   base="xs:unsignedInt">
+      <xs:minInclusive value="1" />
+      <xs:maxInclusive value="16"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType     name="uiTTVVoice">
+    <xs:restriction   base="xs:unsignedInt">
+      <xs:minInclusive value="0" />
+      <xs:maxInclusive value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType     name="uiEditLength">
+    <xs:restriction   base="xs:unsignedInt">
+      <xs:minInclusive value="1" />
+      <xs:maxInclusive value="256"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType     name="uiPAChannel">
+    <xs:restriction   base="xs:unsignedInt">
+      <xs:minInclusive value="1" />
+      <xs:maxInclusive value="8"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Type deklaration for PA channel list  -->
+
+  <xs:simpleType      name="listPAChannels">
+    <xs:list          itemType="dx:uiPAChannel"/>
+  </xs:simpleType>
+
+  <xs:simpleType      name="typePAChannels">
+    <xs:restriction   base="dx:listPAChannels">
+      <xs:minLength   value="1"/>
+      <xs:maxLength   value="8"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+
+  <!-- Type deklaration for callback functionality in prepared calls -->
+  
+  <xs:complexType     name="typePrepCallback">
+    <xs:sequence>
+      <xs:element     name="DIALTHRU"         type="dx:uiDialThru"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="NO_OF_WAITPOS"    type="dx:uiNoOfWaitpos"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <!-- Type deklaration for list of DTMF and Keypad evaluation  -->
+  <xs:simpleType      name="enumIgnoreKeys">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="RTP"/>
+      <xs:enumeration value="DTMF"/>
+      <xs:enumeration value="Keypad"/>
+    </xs:restriction>
+  </xs:simpleType>  
+
+  <xs:simpleType    name="listIgnoreKeys">
+    <xs:list          itemType="dx:enumIgnoreKeys"/>
+  </xs:simpleType>
+
+  <xs:simpleType      name="typeIgnoreKeys">
+    <xs:restriction   base="dx:listIgnoreKeys">
+      <xs:minLength   value="1"/>
+      <xs:maxLength   value="3"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Type deklaration for list of phone keys  -->
+  <xs:simpleType    name="listKeys">
+    <xs:list          itemType="ex:strKeyCode"/>
+  </xs:simpleType>
+
+  <xs:simpleType      name="typeKeyList">
+    <xs:restriction   base="dx:listKeys">
+      <xs:minLength   value="1"/>
+      <xs:maxLength   value="12"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Type deklaration for list of announcements  -->
+  
+  <xs:simpleType      name="listAnnouncements">
+    <xs:list          itemType="dx:strIdentifier"/>
+  </xs:simpleType>
+
+  <xs:simpleType      name="typeAnnouncements">
+    <xs:restriction   base="dx:listAnnouncements">
+      <xs:minLength   value="1"/>
+      <xs:maxLength   value="16"/>
+    </xs:restriction>
+  </xs:simpleType>
+ 
+  <!-- Type deklaration for endless list of announcements  -->
+  
+  <xs:complexType     name="typeAnnList">
+    <xs:sequence>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Type deklaration for endless list of groups  -->
+  
+  <xs:complexType     name="typeGroupList">
+    <xs:sequence>
+      <xs:element     name="SG-GROUPID"       type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Type deklaration for endless list of members  -->
+  <xs:complexType     name="typeMemberList">
+    <xs:sequence>
+      <xs:element     name="SS-SBSCRID"       type="ex:strObjectId"
+                                              minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+   
+   <!-- Type deklaration for audio transmission -->
+  
+  <xs:complexType     name="typeAnnData">
+    <xs:simpleContent>
+      <xs:extension   base="dx:strAnnData">
+        <xs:attribute     name="segNo"            type="xs:unsignedLong"
+                                                  use="required"/>
+        <xs:attribute     name="isLast"           type="xs:boolean"
+                                                  use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeKeyConfirmations">
+    <xs:simpleContent>
+      <xs:extension   base="dx:enumConfirmations">
+        <xs:attribute     name="title"            type="dx:strTitle"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType     name="typeRecPlayControls">
+    <xs:simpleContent>
+      <xs:extension   base="dx:enumRecPlayControls">
+        <xs:attribute     name="title"            type="dx:strTitle"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:simpleType      name="enumDelRpAnn">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="Yes"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <!-- Type deklaration for announcement handling  -->
+
+  <xs:complexType     name="typeRecPlay">
+    <xs:all>
+      <xs:element     name="KEY_0"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_1"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_2"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_3"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_4"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_5"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_6"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_7"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_8"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_9"            type="dx:typeRecPlayControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RECPLAY_ANN"      type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="REC_TEXT"         type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PLAY_TEXT"        type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="DEL_RP_ANN"       type="dx:enumDelRpAnn"
+                                              minOccurs="0" maxOccurs="1"/>
+
+    </xs:all>
+  </xs:complexType>
+
+
+  <!-- Type deklaration for confirmation of calls  -->
+  
+  <xs:complexType     name="typeConfirmation">
+    <xs:all>
+      <xs:element     name="KEY_0"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_1"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_2"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_3"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_4"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_5"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_6"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_7"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_8"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEY_9"            type="dx:typeKeyConfirmations"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CFRM_ANN"         type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CFRM_TEXT"        type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Type deklaration for dialog controls -->
+  
+  <xs:complexType     name="typeButton">
+    <xs:attribute     name="id"               type="dx:strCtrlIdentifier"
+                                              use="required"/>
+    <xs:attribute     name="title"            type="dx:strTitle"/>
+    <xs:attribute     name="notify"           type="dx:enumControlNotify"/>
+    <xs:attribute     name="keyCode"          type="dx:strNumericKey"/>
+    <xs:attribute     name="annID"            type="dx:strIdentifier"/>
+    <xs:attribute     name="stopAnn"          type="xs:boolean"/>
+    <xs:attribute     name="closeDlg"         type="xs:boolean"/>
+    <xs:attribute     name="href"             type="dx:strURL"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeButtonPanel">
+    <xs:sequence>  
+      <xs:element     name="CT-BUTTON"         type="dx:typeButton"
+                                               minOccurs="1" maxOccurs="10"/>
+    </xs:sequence>
+    <xs:attribute     name="annID"           type="dx:strIdentifier"/>
+    <xs:attribute     name="title"           type="dx:strLongTitle"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeStatic">
+    <xs:simpleContent>
+     <xs:extension   base="ex:strLongName">
+      <xs:attribute     name="bold"             type="xs:boolean"/>
+      <xs:attribute     name="annID"            type="dx:typeAnnouncements"/>
+      <xs:attribute     name="store"            type="xs:boolean"/>
+     </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType     name="typeEdit">
+    <xs:simpleContent>
+      <xs:extension   base="ex:strLongName">
+        <xs:attribute     name="id"               type="dx:strCtrlIdentifier"
+                                                  use="required"/>
+        <xs:attribute     name="title"            type="dx:strLongTitle"/>                                                  
+        <xs:attribute     name="length"           type="dx:uiEditLength"/>
+        <xs:attribute     name="validChars"       type="dx:enumValidChars"/>
+        <xs:attribute     name="notify"           type="xs:boolean"/>
+        <xs:attribute     name="echoChar"           type="dx:strSingleChar"/>
+        <xs:attribute     name="annID"            type="dx:strIdentifier"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeDlgCycle">
+    <xs:sequence>
+      <xs:element     name="CT-STATIC"        type="dx:typeStatic"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-BTTNPANEL"     type="dx:typeButtonPanel"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-EDIT"          type="dx:typeEdit"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    
+    <xs:attribute   name="play"             type="dx:strPlayDuration"/>
+    <xs:attribute   name="pause1"           type="xs:unsignedInt"/>
+    <xs:attribute   name="pause2"           type="xs:unsignedInt"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeDlgForm">
+    <xs:sequence>
+      <xs:element     name="CA-CYCLE"         type="dx:typeDlgCycle"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:sequence>                                              
+    <xs:attribute   name="annID"            type="dx:strIdentifier"/>                                              
+    <xs:attribute   name="title"            type="dx:strLongTitle"/>
+    <xs:attribute   name="pause1"           type="xs:unsignedInt"/>
+    <xs:attribute   name="pause2"           type="xs:unsignedInt"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeTrigger">
+    <xs:simpleContent>
+      <xs:extension   base="ex:strLongName">
+      <xs:attribute   name="id"                   type="dx:strCtrlIdentifier"
+                                                  use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <!-- Type deklaration for main elements  -->
+  <xs:complexType     name="typeDaksStatus">
+    <xs:all>
+      <xs:element     name="NUMREG"        type="xs:unsignedInt"
+                                           minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+	
+  
+  <xs:complexType     name="typeParams1">
+    <xs:all>
+      <xs:element     name="SGL_CALLINGNO"    type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_CALLINGNAME"  type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_CONNTYPE"     type="dx:strConType"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_PAUSE"        type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_RINGTIME"     type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_BUSYMED"      type="dx:enumBusyActions"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_BUSYHIGH"     type="dx:enumBusyActions"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_ANNOUNCEM"    type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_INTRANN"      type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="TRM_INTRANN"      type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_REQTIMANN"    type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_NEUTRAL-ANN"  type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_NEUTRAL-TXT"  type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_PIN-ENTRYANN" type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_PIN-ENTRYTXT" type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SECURITY-ENTRYANN" type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SECURITY-ENTRYTXT" type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="KEYPADECHO"       type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CALLBACKDISC"     type="dx:typeKeyList"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CONV-STOP-INP"    type="dx:enumKeyIndicationsEx"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CONV-NOTE-INP"    type="dx:enumKeyIndicationsEx"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CONV-PRIO-INP"    type="dx:enumKeyIndicationsEx"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PREPCALLBACK"     type="dx:typePrepCallback"
+                                              minOccurs="0" maxOccurs="1"/>
+     </xs:all>
+  </xs:complexType>
+
+  <xs:complexType     name="typeStart1">
+    <xs:all>
+      <xs:element     name="PROCESS-TYPE"     type="dx:enumProcessTypes"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNIDS"        type="dx:typeAnnouncements"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL-SPKPHCTRL"    type="dx:enumSpeakerPhoneControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="AUTOCALLBACK1"    type="dx:enumAutoCallbacks"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL_CONNTYPE"      type="dx:strConType"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-SECURITYCODE"  type="dx:strSecurityCode"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-CBCALLINGNO"   type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-CBCALLINGNAME" type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL-PIN"          type="dx:strPIN"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SGL-PIN-NEUTRAL"  type="dx:enumPinNeutral"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RECPLAY"          type="dx:typeRecPlay"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CONFIRMATION"     type="dx:typeConfirmation"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CALLBACKDISC"     type="dx:typeKeyList"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CONV-STOP-INP"    type="dx:enumKeyIndications"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CONV-NOTE-INP"    type="dx:enumKeyIndications"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CONV-PRIO-INP"    type="dx:enumKeyIndications"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+  
+<xs:complexType     name="typeEvent1">
+    <xs:all>
+      <xs:element     name="SS-TIME"        type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+  
+
+  <!-- Definition of announcement control -->
+  
+  <xs:complexType     name="typeGetAnnRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CA-NAME"          type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CA-MAXLEN"        type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeGetAnnResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-LENGTH"        type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeFreeAnnRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeFreeAnnResponse">
+    <xs:all>
+      <xs:element     name="ANNOUNCEMENTS"    type="dx:typeAnnList"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-FREEDLEN"      type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeSetAnnRequest">
+    <xs:all>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CA-APPEND"        type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CA-DATA"          type="dx:typeAnnData"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeSetAnnResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-RECLEN"        type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeTTVRequest">
+    <xs:all>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CA-TTVLANGUAGE"   type="dx:uiTTVLanguage"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CA-TTVVOICE"      type="dx:uiTTVVoice"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CA-TTVTEXT"       type="dx:strTTVAnnData"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeTTVResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeTTVIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SA-RECLEN"        type="xs:unsignedInt"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType     name="typeAnnChangedIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNID"         type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SA-RECLEN"        type="xs:unsignedInt"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Definition of group control -->
+
+  <xs:complexType     name="typeGetGroupRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"          type="ex:strProcessRef"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-NAME"            type="ex:strName"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-MAXMBRS"         type="xs:unsignedInt"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-CALLINGNO"       type="ex:strClipNumber"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-CALLINGNAME"     type="ex:strClipName"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-SIGNAL"          type="ex:enumProcessSignals"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-TEXTMSG"         type="ex:strDisplayText"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-ATTEMPTS"        type="xs:unsignedInt"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-PRIO"            type="ex:enumProcessPriorities"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CG-MLPP"            type="dx:enumMLPPLevels"
+                                                minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SA-ANNIDS"          type="dx:typeAnnouncements"
+                                                minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CONFIRMATION"       type="dx:typeConfirmation"
+                                                minOccurs="0" maxOccurs="1"/>
+   </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeGetGroupResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SG-GROUPID"       type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SG-MEMBERS"       type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeFreeGroupRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SG-GROUPID"       type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeFreeGroupResponse">
+    <xs:all>
+      <xs:element     name="GROUPS"           type="dx:typeGroupList"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SG-FREEDMBRS"     type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeAddMemberRequest">
+    <xs:all>
+      <xs:element     name="SG-GROUPID"       type="dx:strIdentifier"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CS-NAME"          type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CS-PHONENO"       type="ex:strPhoneNo"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CS-MEMBERTYPE"    type="dx:enumMemberType"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CS-PA_CHANN"      type="dx:typePAChannels"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CS-CONTYPE"       type="dx:strConType"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CS-SPKPHCTRL"     type="dx:enumSpeakerPhoneControls"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeAddMemberResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-SBSCRID"       type="ex:strObjectId"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SG-GROUPID"       type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeGrpMbrControl">
+    <xs:all>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SS-SBSCRID"       type="ex:strObjectId"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="COMMAND"          type="dx:enumMbrCtrlCommand"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType     name="typeRemoveMemberRequest">
+    <xs:all>
+      <xs:element     name="SG-GROUPID"       type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-SBSCRID"       type="ex:strObjectId"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeRemoveMemberResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SG-GROUPID"       type="dx:strIdentifier"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="MEMBERS"          type="dx:typeMemberList"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <!-- Definition of control elements for transparent mode -->  
+  
+  <xs:complexType     name="typeStartRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-NAME"          type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-ACCESSCODE"    type="dx:strAccessID"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-CALLINGNO"     type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-CALLINGNAME"   type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-MAXCNCT"       type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeStartResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="S-LOAD"           type="ex:enumLoadValues"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="ST-CONNECTIONS"   type="xs:unsignedInt"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+<!--  <xs:complexType     name="typeStartedIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-CREATED"       type="xs:dateTime"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-STATUS"        type="ex:enumProcessStatus"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-NAME"          type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="ST-CONNECTIONS"   type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType     name="typeStatusIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-CREATED"       type="xs:dateTime"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-STATUS"        type="ex:enumProcessStatus"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-GETSTAT"       type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-NAME"          type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType> -->
+  
+  <xs:complexType     name="typeStopRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeStopResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeEndedIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-CREATED"       type="xs:dateTime"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-ENDINFO"       type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-ENDREASON"     type="ex:enumProcessEndReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CT-NAME"          type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <!-- Definition of connection control elements -->
+
+  <xs:complexType     name="typeCnctControlRequest">
+    <xs:all>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-CNCT-TAN"      type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CC-NAME"          type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-PHONENO"       type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-CONTYPE"       type="dx:strConType"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-HANDLECALL"    type="dx:enumCallHandles"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CC-PREPARED"      type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-CONNECTEDNO"   type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-CONNECTEDNAME" type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-SIGNAL"        type="ex:enumProcessSignals"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-SPKPHCTRL"     type="dx:enumSpeakerPhoneControls"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-IGNCALLPIGRP"  type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-IGNCALLFWD"  	type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-SIMCBKREQ"  	  type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-BRKDONOTDIST"  type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-WHENMEMBUSY"   type="dx:enumCnctCtrlMemberBusyActions"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-WHENTRBUSY"    type="dx:enumCnctCtrlTrunkBusyActions"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CC-IGNOREKEYS"    type="dx:typeIgnoreKeys"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeCnctControlResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-CNCT-TAN"      type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeCnctEventIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-CNCT-TAN"      type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-DIRECTION"     type="ex:enumEventDirection"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-CALLINGNO"     type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SC-CALLINGNAME"   type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SC-CONNECTEDNO"   type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SC-CONNECTEDNAME" type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SC-TYPE"          type="dx:enumCallType"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-STATUS"        type="dx:enumCallStatus"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Definition of dialog control elements -->
+
+  <xs:complexType     name="typeDlgControlRequest">
+    <xs:all>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-CNCT-TAN"      type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CT-DLG-REF"       type="dx:strDialogRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-TIMEOUT"       type="xs:unsignedInt"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CT-DLG-FORM"      type="dx:typeDlgForm"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeDlgControlResponse">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-CNCT-TAN"      type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="ST-DLG-TAN"       type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CT-DLG-REF"       type="dx:strDialogRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeDlgEventIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SC-CNCT-TAN"      type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="ST-DLG-TAN"       type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="CT-DLG-REF"       type="dx:strDialogRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="ST-STATUS"        type="dx:enumDialogStatus"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="ST-TRIGGER"       type="dx:typeTrigger"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Definition of info telephone elements -->
+
+  <xs:complexType     name="typeInfotelSwitchRequest">
+    <xs:all>
+      <xs:element     name="CI-PROFILE"       type="dx:enumInfotelProfiles"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="typeInfotelSwitchResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+  </xs:complexType>
+  
+  <xs:complexType     name="typeInfotelSwitchedIndication">
+    <xs:all>
+      <xs:element     name="SI-PROFILE"       type="dx:enumInfotelProfiles"
+                                              minOccurs="1" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <!-- Definition of root element and it's main elements -->
+
+  <xs:element         name="DAKS_ESPA-X">
+    <xs:complexType>
+      <xs:choice>
+	<xs:element   name="DAKS-STATUS"      type="dx:typeDaksStatus"/>
+        <xs:element   name="PARAMS1"          type="dx:typeParams1"/>
+        <xs:element   name="START1"           type="dx:typeStart1"/>
+        <xs:element   name="EVENT1"           type="dx:typeEvent1"/>
+        <xs:element   name="REQ.A-GETANN"     type="dx:typeGetAnnRequest"/>
+        <xs:element   name="RSP.A-GETANN"     type="dx:typeGetAnnResponse"/>
+        <xs:element   name="REQ.A-FREEANN"    type="dx:typeFreeAnnRequest"/>
+        <xs:element   name="RSP.A-FREEANN"    type="dx:typeFreeAnnResponse"/>
+        <xs:element   name="REQ.A-SETANN"     type="dx:typeSetAnnRequest"/>
+        <xs:element   name="RSP.A-SETANN"     type="dx:typeSetAnnResponse"/>
+        <xs:element   name="REQ.A-TTV"        type="dx:typeTTVRequest"/>
+        <xs:element   name="RSP.A-TTV"        type="dx:typeTTVResponse"/>
+        <xs:element   name="IND.A-TTV"        type="dx:typeTTVIndication"/>
+        <xs:element   name="IND.A-ANNCHG"     type="dx:typeAnnChangedIndication"/>
+        <xs:element   name="REQ.G-GETGRP"     type="dx:typeGetGroupRequest"/>
+        <xs:element   name="RSP.G-GETGRP"     type="dx:typeGetGroupResponse"/>
+        <xs:element   name="REQ.G-FREEGRP"    type="dx:typeFreeGroupRequest"/>
+        <xs:element   name="RSP.G-FREEGRP"    type="dx:typeFreeGroupResponse"/>
+        <xs:element   name="REQ.S-ADDMBR"     type="dx:typeAddMemberRequest"/>
+        <xs:element   name="RSP.S-ADDMBR"     type="dx:typeAddMemberResponse"/>
+        <xs:element   name="CMD.GRPMBR-CTRL"  type="dx:typeGrpMbrControl"/>
+        <xs:element   name="REQ.S-REMMBR"     type="dx:typeRemoveMemberRequest"/>
+        <xs:element   name="RSP.S-REMMBR"     type="dx:typeRemoveMemberResponse"/>
+        <xs:element   name="REQ.T-START"      type="dx:typeStartRequest"/>
+        <xs:element   name="RSP.T-START"      type="dx:typeStartResponse"/>
+<!--    <xs:element   name="IND.T-STARTED"    type="dx:typeStartedIndication"/>
+        <xs:element   name="IND.T-STATUS"     type="dx:typeStatusIndication"/> -->
+        <xs:element   name="REQ.T-STOP"       type="dx:typeStopRequest"/>
+        <xs:element   name="RSP.T-STOP"       type="dx:typeStopResponse"/>
+        <xs:element   name="IND.T-ENDED"      type="dx:typeEndedIndication"/>
+        <xs:element   name="REQ.T-CNCTCTRL"   type="dx:typeCnctControlRequest"/>
+        <xs:element   name="RSP.T-CNCTCTRL"   type="dx:typeCnctControlResponse"/>
+        <xs:element   name="IND.T-CNCTEVENT"  type="dx:typeCnctEventIndication"/>
+        <xs:element   name="REQ.T-DLGCTRL"    type="dx:typeDlgControlRequest"/>
+        <xs:element   name="RSP.T-DLGCTRL"    type="dx:typeDlgControlResponse"/>
+        <xs:element   name="IND.T-DLGEVENT"   type="dx:typeDlgEventIndication"/>
+        <xs:element   name="REQ.I-SWITCH"     type="dx:typeInfotelSwitchRequest"/>
+        <xs:element   name="RSP.I-SWITCH"     type="dx:typeInfotelSwitchResponse"/>
+        <xs:element   name="IND.I-SWITCHED"   type="dx:typeInfotelSwitchedIndication"/>
+      </xs:choice>
+      <xs:attribute   name="version"          type="dx:enumDAKSVersions"
+                                              use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>
