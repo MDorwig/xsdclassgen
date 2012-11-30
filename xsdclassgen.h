@@ -74,7 +74,7 @@ public:
 class xsdElement
 {
 public:
-	xsdElement(const char * name,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs)
+	xsdElement(const char * name,const char * id,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs)
 	{
 		if (strchr(name,':') != NULL)
 		{
@@ -83,7 +83,10 @@ public:
 			name++;
 		}
 		m_name       = name;
-		m_cname      = MakeIdentifier("m_",name);
+		if (id)
+			m_cname = MakeIdentifier("m_",id) ;
+		else
+			m_cname      = MakeIdentifier("m_",name);
 		m_typename   = typname;
 		m_type       = type ;
 		m_minOccurs  = minOccurs;

@@ -27,6 +27,7 @@ enum xsd_keyword
   xsd_extension,
   xsd_fractionDigits,
   xsd_group,
+  xsd_id,
   xsd_import,
   xsd_int,
   xsd_itemType,
@@ -82,6 +83,7 @@ struct xsd_keyword_entry keywordtable[] = {
     ENTRY(extension),
     ENTRY(fractionDigits),
     ENTRY(group),
+    ENTRY(id),
     ENTRY(import),
     ENTRY(int),
     ENTRY(itemType),
@@ -376,6 +378,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 	xsdElement * xsdelem     = NULL;
 	xsdType    * xsdtype     = NULL;
 	const char * xsdname     = NULL;
+	const char * xsdid       = NULL;
 	xsdTypename* xsdtypename = NULL;
 	int minOccurs = 0 ;
 	int maxOccurs = 0 ;
@@ -387,6 +390,10 @@ xsdElement * ParseElement(xmlNodePtr element)
 		{
 			case	xsd_name:
 				xsdname = getContent(attr->children);
+			break ;
+
+			case	xsd_id:
+				xsdid = getContent(attr->children);
 			break ;
 
 			case	xsd_type:
@@ -433,7 +440,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 			}
 		}
 	}
-	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype,minOccurs,maxOccurs);
+	xsdelem = new xsdElement(xsdname,xsdid,xsdtypename,xsdtype,minOccurs,maxOccurs);
 	return xsdelem;
 }
 
@@ -1605,7 +1612,10 @@ int main(int argc, char * argv[])
 				{
 					if (!elem->m_type->m_impl)
 					{
-						elem->m_type->GenCode(outfile,1,"",elem->getCppName());
+						const char * name = elem->getCppName();
+						if (strncmp(name,"m_",2) == 0)
+							name += 2 ; // skip "m_" prefix on toplevel elements
+						elem->m_type->GenCode(outfile,1,"",name);
 					}
 				}
 			}

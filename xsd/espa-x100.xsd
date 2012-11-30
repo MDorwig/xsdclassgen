@@ -1,0 +1,910 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- ==================================
+   ***************************
+   *** ESPA-X Version 1.00 ***
+   ***************************
+
+  Copyright:  (c) 2008-2009
+              tetronik GmbH AEN
+              Silberbachstrasse 10
+              65232 Taunusstein
+              Germany
+              www.espa-x.org
+              www.tetronik.com
+
+  Authors:    Heiko Trapp, 
+              Hartmut Luetz-Hawranke
+
+  Status:     January, 12th 2010
+
+  History:
+  ========
+    2008-11-17 Minor errors eliminated
+    2008-10-29 Enumeration "Aborted" added to <SP-ENDREASON> 
+               Enumeration "None" added to <SS-RESULT>
+               Element <SP-ENDINFO> added to <IND.P-ENDED>
+               Element <LI-CLINETSW> added to <REQ.LOGIN>
+               Element <LI-SERVERSW> added to <RSP.LOGIN>
+               Enumeration "Conversation" added to <SP-RESULT>
+    2008-09-20 Data type of <CP-NCIFNO> changed to from ex:strPhoneNo ex:strClipName
+    2008-06-25 Initial version
+    2009-06-22 SP-GETSTAT included in pStatusIndication and pEventIndication
+               proprietaryRoot definition added
+               Type of PROPRIETARY within ESPA-X root element changed to "proprietaryRoot"
+               Copyright and dates adjusted
+    2009-08-27 PROPRIETARY included in errorIndication 
+    2010-01-12 Missing value "Negative confirmed" added to "enumProcessResults"
+======================================= -->
+
+<xs:schema  xmlns:ex="http://ns.espa-x.org/espa-x" 
+            xmlns="http://ns.espa-x.org/espa-x" 
+            elementFormDefault="qualified"
+            targetNamespace="http://ns.espa-x.org/espa-x" 
+            xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    
+  <!-- Copyright -->
+  <xs:annotation>
+    <xs:documentation>
+      ESPA-X Version 1.00.
+      Copyright 2008-2009 tetronik GmbH AEN.
+      All rights reserved.
+    </xs:documentation>
+  </xs:annotation>
+
+  <!-- Deklaration of enumerations -->
+
+  <xs:simpleType      name="enumValidVersions">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="1.00"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumHealthReasons">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="OK"/>
+      <xs:enumeration value="No data"/>
+      <xs:enumeration value="Problem detected"/>
+      <xs:enumeration value="Out of service"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumLoadValues">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Overload"/>
+      <xs:enumeration value="Full"/>
+      <xs:enumeration value="Heavy"/>
+      <xs:enumeration value="Medium"/>
+      <xs:enumeration value="Low"/>
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="Normal"/>
+      <xs:enumeration value="Unknown"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumResponseCodes">
+    <xs:restriction   base="xs:integer">
+      <xs:enumeration value="200"/>
+      <xs:enumeration value="400"/>
+      <xs:enumeration value="401"/>
+      <xs:enumeration value="402"/>
+      <xs:enumeration value="403"/>
+      <xs:enumeration value="404"/>
+      <xs:enumeration value="405"/>
+      <xs:enumeration value="406"/>
+      <xs:enumeration value="407"/>
+      <xs:enumeration value="408"/>
+      <xs:enumeration value="409"/>
+      <xs:enumeration value="410"/>
+      <xs:enumeration value="450"/>
+      <xs:enumeration value="500"/>
+      <xs:enumeration value="501"/>
+      <xs:enumeration value="502"/>
+      <xs:enumeration value="503"/>
+      <xs:enumeration value="600"/>
+      <xs:enumeration value="601"/>
+      <xs:enumeration value="602"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumResponseReasons">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="OK"/>
+      <xs:enumeration value="Bad Request"/>
+      <xs:enumeration value="Unauthorized"/>
+      <xs:enumeration value="Payment Required"/>
+      <xs:enumeration value="Forbidden"/>
+      <xs:enumeration value="Not Found"/>
+      <xs:enumeration value="Method Not Allowed"/>
+      <xs:enumeration value="Not Acceptable"/>
+      <xs:enumeration value="Authentication Required"/>
+      <xs:enumeration value="Request Timeout"/>
+      <xs:enumeration value="Conflict"/>
+      <xs:enumeration value="Gone"/>
+      <xs:enumeration value="Duplicate"/>
+      <xs:enumeration value="Internal Server Error"/>
+      <xs:enumeration value="Not Implemented"/>
+      <xs:enumeration value="Bad Gateway"/>
+      <xs:enumeration value="Service Unavailable"/>
+      <xs:enumeration value="Invalid header"/>
+      <xs:enumeration value="Not wellformed"/>
+      <xs:enumeration value="Invalid message"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumLogoutReasons">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Normal"/>
+      <xs:enumeration value="Service"/>
+      <xs:enumeration value="Reboot"/>
+      <xs:enumeration value="New data"/>
+      <xs:enumeration value="System error"/>
+      <xs:enumeration value="Requested"/>
+      <xs:enumeration value="Unspecified"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumShutdownReasons">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Normal"/>
+      <xs:enumeration value="Service"/>
+      <xs:enumeration value="Reboot"/>
+      <xs:enumeration value="New data"/>
+      <xs:enumeration value="System error"/>
+      <xs:enumeration value="Unspecified"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumShutdownModes">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Immediate"/>
+      <xs:enumeration value="Quick"/>
+      <xs:enumeration value="Slow"/>
+      <xs:enumeration value="New data"/>
+      <xs:enumeration value="System error"/>
+      <xs:enumeration value="Unspecified"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessSignals">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Standard"/>
+      <xs:enumeration value="Urgent"/>
+      <xs:enumeration value="Emergency"/>
+      <xs:enumeration value="Special"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessCbkIfs">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="NC-IF"/>
+      <xs:enumeration value="NC-IF-DTMF"/>
+      <xs:enumeration value="NC-IF-DTHRU"/>
+      <xs:enumeration value="NC-IF-PREP"/>
+      <xs:enumeration value="Phone"/>
+      <xs:enumeration value="Phone-VC"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessPriorities">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Emergency"/>
+      <xs:enumeration value="High"/>
+      <xs:enumeration value="Medium"/>
+      <xs:enumeration value="Standard"/>
+      <xs:enumeration value="Low"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessDetails">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="No"/>
+      <xs:enumeration value="Process"/>
+      <xs:enumeration value="Results"/>
+      <xs:enumeration value="All"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessMasks">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Prepared"/>
+      <xs:enumeration value="Queued"/>
+      <xs:enumeration value="Active"/>
+      <xs:enumeration value="Conversation"/>
+      <xs:enumeration value="Postprocessing"/>
+      <xs:enumeration value="All"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="listProcessMasks">
+    <xs:list          itemType="ex:enumProcessMasks"/>
+  </xs:simpleType>
+
+  <xs:simpleType      name="typeProcessMasks">
+    <xs:restriction   base="ex:listProcessMasks">
+      <xs:minLength   value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessStatus">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Prepared"/>
+      <xs:enumeration value="Queued"/>
+      <xs:enumeration value="Active"/>
+      <xs:enumeration value="Conversation setup"/>
+      <xs:enumeration value="Conversation"/>
+      <xs:enumeration value="Postprocessing"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessEndReasons">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Finished"/>
+      <xs:enumeration value="Aborted"/>
+      <xs:enumeration value="Client"/>
+      <xs:enumeration value="Server"/>
+      <xs:enumeration value="Operator"/>
+      <xs:enumeration value="Failure"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumProcessResults">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="None"/>
+      <xs:enumeration value="Positive"/>
+      <xs:enumeration value="Negative"/>
+      <xs:enumeration value="Positive confirmed"/>
+      <xs:enumeration value="Negative confirmed"/>
+      <xs:enumeration value="Conversation-Stop"/>
+      <xs:enumeration value="Conversation-Note"/>
+      <xs:enumeration value="Conversation-Prio"/>
+      <xs:enumeration value="Conversation"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumEventStatus">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Queued"/>
+      <xs:enumeration value="Processing"/>
+      <xs:enumeration value="Completed"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumEventResults">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="None"/>
+      <xs:enumeration value="Off duty"/>
+      <xs:enumeration value="Busy"/>
+      <xs:enumeration value="No answer"/>
+      <xs:enumeration value="Not reached"/>
+      <xs:enumeration value="Wrong behaviour"/>
+      <xs:enumeration value="Reached"/>
+      <xs:enumeration value="Accepted"/>
+      <xs:enumeration value="Rejected"/>
+      <xs:enumeration value="Conversation"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="enumEventDirection">
+    <xs:restriction   base="xs:string">
+      <xs:enumeration value="Inbound"/>
+      <xs:enumeration value="Outbound"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Deklaration for child element types -->
+  
+  <xs:simpleType      name="strShortName">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="12"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strName">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="30"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strLongName">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="256"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strVeryLongText">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="16348"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strPhoneNo">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="24"/>
+      <xs:pattern     value="[0-9+\-/()*#]+"/>
+      <!-- <xs:pattern value="[0-9+\-/()*#,.;]{1,24}"/> -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strKeyCode">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="1"/>
+      <xs:pattern     value="[0-9*#]"/>
+      <!-- <xs:pattern value="[0-9*#]{1,1}"/> -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strClipName">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="24"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strClipNumber">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="16"/>
+      <xs:pattern     value="[0-9*#]+"/>
+      <!-- <xs:pattern value="[0-9*#]{1,16}"/> -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strDisplayText">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="160"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strAuthenticate">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="4" />
+      <xs:maxLength   value="12"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strSessionId">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="32"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strProcessRef">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="32"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType      name="strObjectId">
+    <xs:restriction   base="xs:string">
+      <xs:minLength   value="1" />
+      <xs:maxLength   value="12"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Type deklaration for propietary element -->
+
+  <xs:complexType     name="proprietaryElement">
+    <xs:sequence>
+      <xs:any         namespace="##any"       minOccurs="1" maxOccurs="1"
+                                              processContents="strict"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType     name="proprietaryRoot">
+    <xs:sequence>
+      <xs:any         namespace="##any"       minOccurs="1" maxOccurs="1"
+                                              processContents="strict"/>
+    </xs:sequence>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <!-- Type deklaration for main elements  -->
+
+  <xs:complexType     name="errorIndication">
+    <xs:all>
+      <xs:element     name="LI-SERVER"        type="ex:strName"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+     </xs:all>
+  </xs:complexType>
+
+  <xs:complexType     name="loginRequest">
+    <xs:all>
+      <xs:element     name="LI-CLIENT"        type="ex:strName"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="LI-CLIENTSW"      type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="LI-USER"          type="ex:strAuthenticate"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="LI-PASSWORD"      type="ex:strAuthenticate"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"/>
+  </xs:complexType>
+
+  <xs:complexType     name="loginResponse">
+    <xs:all>
+      <xs:element     name="LI-SERVER"        type="ex:strName"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="LI-SERVERSW"      type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="heartbeatRequest">
+    <xs:all>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="heartbeatResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="logoutRequest">
+    <xs:all>
+      <xs:element     name="LO-REASON"        type="ex:enumLogoutReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="logoutResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="shutdownCommand">
+    <xs:all>
+      <xs:element     name="SD-REASON"        type="ex:enumShutdownReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SD-MODE"          type="ex:enumShutdownModes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="sConditionRequest">
+    <xs:all>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="sConditionResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="S-HEALTH"         type="ex:enumHealthReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="S-HOTSTBY"        type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="S-LOAD"           type="ex:enumLoadValues"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="sParametersRequest">
+    <xs:all>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="sParametersResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="sSystemIndication">
+    <xs:all>
+      <xs:element     name="S-HEALTH"         type="ex:enumHealthReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="S-HOTSTBY"        type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="S-LOAD"           type="ex:enumLoadValues"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pStartRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-GROUPID"       type="ex:strObjectId"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PHONENO"       type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-CALLINGNO"     type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-CALLINGNAME"   type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-TEXTMSG"       type="ex:strDisplayText"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-SIGNAL"        type="ex:enumProcessSignals"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-WARD"          type="ex:strShortName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-BED"           type="ex:strShortName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-EVENT"         type="ex:strVeryLongText"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-CALLBACK"      type="ex:enumProcessCbkIfs"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-DELAY"         type="xs:unsignedShort"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-ATTEMPTS"      type="xs:unsignedShort"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PRIO"          type="ex:enumProcessPriorities"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-NCIFNO"        type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-CBCKNO"        type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PR-DETAILS"    type="ex:enumProcessDetails"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pStartResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="S-LOAD"           type="ex:enumLoadValues"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pStartedIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-GROUPID"       type="ex:strObjectId"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PHONENO"       type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-PR-NAME"       type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-CREATED"       type="xs:dateTime"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-STATUS"        type="ex:enumProcessStatus"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pStopRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PR-MASK"       type="ex:typeProcessMasks"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pStopResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+
+  <xs:complexType     name="pEndedIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-GROUPID"       type="ex:strObjectId"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PHONENO"       type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-PR-NAME"       type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-CREATED"       type="xs:dateTime"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-ENDINFO"       type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-ENDREASON"     type="ex:enumProcessEndReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-RESULT"        type="ex:enumProcessResults"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pGetstatRequest">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PR-MASK"       type="ex:typeProcessMasks"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pGetstatResponse">
+    <xs:all>
+      <xs:element     name="RSP-CODE"         type="ex:enumResponseCodes"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-REASON"       type="ex:enumResponseReasons"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="RSP-INFO"         type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="invokeID"         type="xs:unsignedLong"
+                                              use="required"/>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pSyncIndication">
+    <xs:all>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pStatusIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-GROUPID"       type="ex:strObjectId"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-PHONENO"       type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="CP-CBCKNO"        type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-PR-NAME"       type="ex:strName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-CREATED"       type="xs:dateTime"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-STATUS"        type="ex:enumProcessStatus"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-RESULT"        type="ex:enumProcessResults"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-GETSTAT"       type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <xs:complexType     name="pEventIndication">
+    <xs:all>
+      <xs:element     name="CP-PR-REF"        type="ex:strProcessRef"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SP-PR-TAN"        type="xs:unsignedLong"
+                                              minOccurs="1" maxOccurs="1"/>
+      <xs:element     name="SP-GETSTAT"       type="xs:boolean"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-NETW-NO"       type="ex:strClipNumber"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-NETW-NAME"     type="ex:strClipName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-SBSCRID"       type="ex:strObjectId"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-SBSCRNO"       type="ex:strPhoneNo"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-SBSCRDATA"     type="ex:strLongName"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-KEY"           type="ex:strKeyCode"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-DIRECTION"     type="ex:enumEventDirection"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-STATUS"        type="ex:enumEventStatus"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="SS-RESULT"        type="ex:enumEventResults"
+                                              minOccurs="0" maxOccurs="1"/>
+      <xs:element     name="PROPRIETARY"      type="ex:proprietaryElement"
+                                              minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+    <xs:attribute     name="sessionID"        type="ex:strSessionId"
+                                              use="required"/>
+  </xs:complexType>
+
+  <!-- Definition of root element and it's main elements -->
+
+  <xs:element         name="ESPA-X" id="ESPAX_X">
+    <xs:complexType>
+      <xs:choice>
+        <xs:element   name="IND.ERROR"        id="IND_ERROR"        type="ex:errorIndication"/>
+        <xs:element   name="REQ.LOGIN"        id="REQ_LOGIN"        type="ex:loginRequest"/>
+        <xs:element   name="RSP.LOGIN"        id="RSP_LOGIN"        type="ex:loginResponse"/>
+        <xs:element   name="REQ.HEARTBEAT"    id="REQ_HEARTBEAT"    type="ex:heartbeatRequest"/>
+        <xs:element   name="RSP.HEARTBEAT"    id="RSP_HEARTBEAT"    type="ex:heartbeatResponse"/>
+        <xs:element   name="REQ.LOGOUT"       id="REQ_LOGOUT"       type="ex:logoutRequest"/>
+        <xs:element   name="RSP.LOGOUT"       id="RSP_LOGOUT"       type="ex:logoutResponse"/>
+        <xs:element   name="CMD.SHUTDOWN"     id="CMD_SHUTDOWN"     type="ex:shutdownCommand"/>
+        <xs:element   name="REQ.S-CONDITION"  id="REQ_S_CONDITION"  type="ex:sConditionRequest"/>
+        <xs:element   name="RSP.S-CONDITION"  id="RSP_S_CONDITION"  type="ex:sConditionResponse"/>
+        <xs:element   name="REQ.S-PARAMETERS" id="REQ_S_PARAMETERS" type="ex:sParametersRequest"/>
+        <xs:element   name="RSP.S-PARAMETERS" id="RSP_S_PARAMETERS" type="ex:sParametersResponse"/>
+        <xs:element   name="IND.S-SYSTEM"     id="IND_S_SYSTEM"     type="ex:sSystemIndication"/>
+        <xs:element   name="REQ.P-START"      id="REQ_P_START"      type="ex:pStartRequest"/>
+        <xs:element   name="RSP.P-START"      id="RSP_P_START"      type="ex:pStartResponse"/>
+        <xs:element   name="IND.P-STARTED"    id="IND_P_STARTED"    type="ex:pStartedIndication"/>
+        <xs:element   name="REQ.P-STOP"       id="REQ_P_STOP"       type="ex:pStopRequest"/>
+        <xs:element   name="RSP.P-STOP"       id="RSP_P_STOP"       type="ex:pStopResponse"/>
+        <xs:element   name="IND.P-ENDED"      id="IND_P_ENDED"      type="ex:pEndedIndication"/>
+        <xs:element   name="REQ.P-GETSTAT"    id="REQ_P_GETSTAT"    type="ex:pGetstatRequest"/>
+        <xs:element   name="RSP.P-GETSTAT"    id="RSP_P_GETSTAT"    type="ex:pGetstatResponse"/>
+        <xs:element   name="IND.P-SYNC"       id="IND_P_SYNC"       type="ex:pSyncIndication"/>
+        <xs:element   name="IND.P-STATUS"     id="IND_P_STATUS"     type="ex:pStatusIndication"/>
+        <xs:element   name="IND.P-EVENT"      id="IND.P-EVENT"      type="ex:pEventIndication"/>
+        <xs:element   name="PROPRIETARY"      type="ex:proprietaryRoot"/>
+      </xs:choice>
+      <xs:attribute   name="version"          type="ex:enumValidVersions"
+                                              use="required"/>
+      <xs:attribute   name="timestamp"        type="xs:dateTime"/>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>
