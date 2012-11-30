@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <libxml2/libxml/parser.h>
 #include "xsdclassgen.h"
 
@@ -23,10 +24,12 @@ enum xsd_keyword
   xsd_default,
   xsd_element,
   xsd_enumeration,
+  xsd_extension,
   xsd_fractionDigits,
   xsd_group,
   xsd_import,
   xsd_int,
+  xsd_itemType,
   xsd_length,
   xsd_list,
   xsd_maxExclusive,
@@ -44,6 +47,7 @@ enum xsd_keyword
   xsd_schema,
   xsd_schemaLocation,
   xsd_sequence,
+  xsd_simpleContent,
   xsd_simpleType,
   xsd_string,
   xsd_targetNamespace,
@@ -75,10 +79,12 @@ struct xsd_keyword_entry keywordtable[] = {
     ENTRY(default),
     ENTRY(element),
     ENTRY(enumeration),
+    ENTRY(extension),
     ENTRY(fractionDigits),
     ENTRY(group),
     ENTRY(import),
     ENTRY(int),
+    ENTRY(itemType),
     ENTRY(length),
     ENTRY(list),
     ENTRY(maxExclusive),
@@ -95,6 +101,7 @@ struct xsd_keyword_entry keywordtable[] = {
     ENTRY(schema),
   	ENTRY(schemaLocation),
     ENTRY(sequence),
+    ENTRY(simpleContent),
     ENTRY(simpleType),
     ENTRY(string),
   	ENTRY(targetNamespace),
@@ -120,6 +127,16 @@ xsd_keyword Lookup(const xmlChar * name)
 	if (entry != NULL)
 		kw = entry->keyword;
 	return kw ;
+}
+
+std::list<std::string*> includePaths ;
+
+void AddIncludePath(const char * path)
+{
+	std::string * s = new std::string(path);
+	if (s->at(s->size()-1) == '/')
+		s->erase(s->size()-1);
+	includePaths.push_back(s);
 }
 
 int xsdType::m_count;
@@ -235,6 +252,21 @@ xsdType * FindType(const char * name)
 	return type ;
 }
 
+xsdType * FindType(xsdTypename * tn)
+{
+	xsdType * type ;
+	xsdNamespace * ns ;
+	if (tn->m_ns.empty())
+		ns = targetNamespace;
+	else
+		ns = FindNamespace(tn->m_ns.c_str());
+	if (ns != NULL)
+	{
+		type = ns->FindType(tn->m_name.c_str());
+	}
+	return type ;
+}
+
 void AddType(xsdType * type)
 {
 	xsdNamespace * ns = targetNamespace;
@@ -251,10 +283,6 @@ void AddType(xsdType * type)
 #define for_each_child(child,node) for (xmlNodePtr child = node->children   ; child != NULL ; child = child->next)
 #define for_each_attr(attr,node)   for (xmlAttrPtr attr  = node->properties ; attr != NULL  ; attr = attr->next)
 #define for_each_nsdef(nsdef,node) for (xmlNsPtr nsdef = node->nsDef ; nsdef != NULL ; nsdef = nsdef->next)
-
-#ifdef UPDATE_TYPE
-void UpdateType(xsdType * oldtype,xsdType * newtype);
-#endif
 
 const char * getContent(xmlNodePtr node)
 {
@@ -292,91 +320,54 @@ void AddElement(xsdElement * elem)
 		ns->AddElement(elem);
 }
 
-#ifdef UPDATE_TYPE
-void UpdateType(xsdComplexType * type,xsdType * oldtype, xsdType * newtype);
-
-void UpdateType(std::list<xsdElement*> elemlist,xsdType * oldtype, xsdType * newtype)
+void not_allowed_error(xmlNodePtr e,xmlNodePtr n)
 {
-	std::list<xsdElement*>::iterator it;
-	for (it = elemlist.begin() ; it != elemlist.end() ; it++)
-	{
-		xsdElement * elem = *it ;
-		if (elem->m_type == oldtype)
-		{
-			printf("Update type for Element %s to %s\n",elem->getName(),newtype->getName());
-			elem->m_type = newtype ;
-		}
-		else
-		{
-			switch(elem->m_type->m_tag)
-			{
-				case	type_complex:
-					UpdateType((xsdComplexType*)elem->m_type,oldtype,newtype);
-				break ;
-
-				default:
-				break ;
-			}
-		}
-	}
+	printf("\"%s\" not allowed in \"%s\"\n",e->name,n->name);
 }
 
-void UpdateType(xsdSequenceType * seq,xsdType * oldtype, xsdType * newtype)
+void not_supported_error(xmlNodePtr e,xmlNodePtr n)
 {
-	UpdateType(seq->m_list,oldtype,newtype);
+	printf("\"%s\" not supported in \"%s\"\n",e->name,n->name);
 }
 
-void UpdateType(xsdComplexType * type,xsdType * oldtype, xsdType * newtype)
+void not_supported_attribute_error(xmlAttrPtr a,xmlNodePtr n)
 {
-	if (type->m_sequence != NULL)
-		UpdateType(type->m_sequence,oldtype,newtype);
+	printf("\"%s\" not supported in \"%s\"\n",a->name,n->name);
 }
 
-void UpdateType(xsdType * oldtype,xsdType * newtype)
-{
-	UpdateType(elementlist,oldtype,newtype);
-	typeListIterator ti;
-	for (ti = m_alltypes.begin() ; ti != m_alltypes.end() ; ti++)
-	{
-		xsdType * type = *ti;
-		switch(type->m_tag)
-		{
-			case	type_complex:
-				UpdateType((xsdComplexType*)type,oldtype,newtype);
-			break ;
-
-			default:
-			break ;
-		}
-	}
-}
-#endif
-
+xsdRestriction * ParseRestriction(xmlNodePtr rest);
 xsdComplexType * ParseComplexType(xmlNodePtr type);
 xsdSimpleType  * ParseSimpleType(xmlNodePtr type);
+xsdChoice      * ParseChoice(xmlNodePtr choice);
 
 xsdAttribute   * ParseAttribute(xmlNodePtr node)
 {
 	xsd_keyword kw ;
-	xsdAttribute * xsdattr = new xsdAttribute();
+	const char * xsdname = "";
+	const char * xsddefault = "";
+	xsdType * xsdtype = NULL;
+
 	for_each_attr(attr,node)
 	{
 		kw = Lookup(attr->name);
 		switch(kw)
 		{
 			case	xsd_name:
-				xsdattr->m_name = getContent(attr->children);
+				xsdname = getContent(attr->children);
 			break ;
 
 			case	xsd_default:
-				xsdattr->m_name = getContent(attr->children);
-			default:
-			case	xsd_type:
-				xsdattr->m_type = FindType(getContent(attr->children));
+				xsddefault = getContent(attr->children);
 			break ;
+
+			case	xsd_type:
+				xsdtype = FindType(getContent(attr->children));
+			break ;
+			default:
 			break ;
 		}
 	}
+	xsdAttribute * xsdattr = new xsdAttribute(xsdname,xsddefault,xsdtype);
 	return xsdattr;
 }
 
@@ -399,9 +390,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 			break ;
 
 			case	xsd_type:
-			{
 				xsdtypename = new xsdTypename(getContent(attr->children));
-			}
 			break ;
 
 			case	xsd_minOccurs:
@@ -413,7 +402,7 @@ xsdElement * ParseElement(xmlNodePtr element)
 			break ;
 
 			default:
-				printf("attribute %s was not expected\n",attr->name);
+				not_supported_attribute_error(attr,element);
 			break ;
 		}
 	}
@@ -439,12 +428,12 @@ xsdElement * ParseElement(xmlNodePtr element)
 				break ;
 
 				default:
-					printf("%s was not expected in <element> declaration\n",child->name);
+					not_supported_error(child,element);
 				break ;
 			}
 		}
 	}
-	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype);
+	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype,minOccurs,maxOccurs);
 	return xsdelem;
 }
 
@@ -464,7 +453,7 @@ xsdSequence * ParseSequence(xmlNodePtr sequence)
 				break ;
 
 				default:
-					printf("%s was unexpected in %s\n",child->name,sequence->name);
+					not_supported_error(child,sequence);
 				break ;
 			}
 		}
@@ -496,7 +485,7 @@ xsdAll * ParseAll(xmlNodePtr all)
 				break ;
 
 				default:
-					printf("%s was unexpected in %s\n",child->name,all->name);
+					not_supported_error(child,all);
 				break ;
 			}
 		}
@@ -504,14 +493,78 @@ xsdAll * ParseAll(xmlNodePtr all)
 	return xsdtype;
 }
 
+xsdGroup  * ParseGroup(xmlNodePtr group)
+{
+	xsd_keyword kw ;
+	const char * xsdname = NULL;
+	xsdGroup * xsdgroup = NULL;
+	for_each_attr(attr,group)
+	{
+		kw = Lookup(attr->name);
+		switch(kw)
+		{
+			case	xsd_name:
+				xsdname = getContent(attr->children);
+			break ;
+
+			default:
+				not_supported_attribute_error(attr,group);
+			break ;
+		}
+	}
+	xsdgroup = new xsdGroup(xsdname) ;
+
+	for_each_child(child,group)
+	{
+		if (child->type == XML_ELEMENT_NODE)
+		{
+			kw = Lookup(child->name);
+			switch(kw)
+			{
+				case	xsd_all:
+					xsdgroup->m_type = ParseAll(child);
+				break ;
+
+				case	xsd_choice:
+					xsdgroup->m_type = ParseChoice(child);
+				break ;
+
+				case	xsd_sequence:
+					xsdgroup->m_type = ParseSequence(child);
+				break ;
+
+				default:
+					not_supported_error(child,group);
+				break ;
+			}
+		}
+	}
+	return xsdgroup;
+}
+
 xsdChoice * ParseChoice(xmlNodePtr choice)
 {
 	xsd_keyword kw ;
+	int min = 0,max = 0 ;
 	for_each_attr(attr,choice)
 	{
 		kw = Lookup(attr->name);
+		switch(kw)
+		{
+			case	xsd_maxOccurs:
+				max = strtol(getContent(attr->children),NULL,10);
+			break ;
+
+			case	xsd_minOccurs:
+				min = strtol(getContent(attr->children),NULL,10);
+			break ;
+
+			default:
+				not_supported_attribute_error(attr,choice);
+			break ;
+		}
 	}
-	xsdChoice * xsdchoice = new xsdChoice();
+	xsdChoice * xsdchoice = new xsdChoice(min,max);
 	for_each_child(child,choice)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -533,15 +586,84 @@ xsdChoice * ParseChoice(xmlNodePtr choice)
 				break ;
 
 				case	xsd_group:
+					xsdchoice->m_groups.push_back(ParseGroup(child));
+				break ;
+
 				case	xsd_any:
 				default:
-					printf("element %s not implemented in <choice>\n",child->name);
+					not_supported_error(child,choice);
 				break ;
 			}
 		}
 	}
 
 	return xsdchoice;
+}
+
+xsdExtension * ParseExtension(xmlNodePtr ext)
+{
+	xsd_keyword kw ;
+	xsdExtension * xsdext = NULL;
+	xsdTypename  * basetypename = NULL;
+	for_each_attr(attr,ext)
+	{
+		kw = Lookup(attr->name);
+		switch(kw)
+		{
+			case	xsd_base:
+				basetypename = new xsdTypename(getContent(attr->children));
+			break ;
+			default:
+			break ;
+		}
+	}
+	xsdext = new xsdExtension(basetypename);
+	for_each_child(child,ext)
+	{
+		if (child->type == XML_ELEMENT_NODE)
+		{
+			kw = Lookup(child->name);
+			switch(kw)
+			{
+				case	xsd_attribute:
+					xsdext->m_attributes.push_back(ParseAttribute(child));
+				break ;
+
+				default:
+					not_supported_error(child,ext);
+				break ;
+			}
+		}
+	}
+	return xsdext;
+}
+
+xsdSimpleContent * ParseSimpleContent(xmlNodePtr cont)
+{
+	xsdSimpleContent * xsdcontent = new xsdSimpleContent();
+	xsd_keyword kw ;
+	for_each_child(child,cont)
+	{
+		if (child->type == XML_ELEMENT_NODE)
+		{
+			kw = Lookup(child->name);
+			switch(kw)
+			{
+				case	xsd_restriction:
+					xsdcontent->m_content = ParseRestriction(child);
+				break ;
+
+				case	xsd_extension:
+					xsdcontent->m_content = ParseExtension(child);
+				break ;
+
+				default:
+					not_supported_error(child,cont);
+				break ;
+			}
+		}
+	}
+	return xsdcontent;
 }
 
 xsdComplexType * ParseComplexType(xmlNodePtr type)
@@ -585,7 +707,12 @@ xsdComplexType * ParseComplexType(xmlNodePtr type)
 					newtype->m_type = ParseAll(child);
 				break ;
 
+				case	xsd_simpleContent:
+					newtype->m_type = ParseSimpleContent(child);
+				break ;
+
 				default:
+					not_supported_error(child,type);
 				break ;
 			}
 		}
@@ -690,6 +817,53 @@ xsdRestriction * ParseRestriction(xmlNodePtr rest)
 	return xmlrest;
 }
 
+xsdList * ParseList(xmlNodePtr list)
+{
+	xsd_keyword kw ;
+	xsdList * xsdlist;
+	xsdSimpleType * simpletype = NULL;
+	const char * itemtypename = NULL;
+	for_each_attr(attr,list)
+	{
+		kw = Lookup(attr->name);
+		switch(kw)
+		{
+			case	xsd_itemType:
+				itemtypename = getContent(attr->children);
+			break ;
+
+			default:
+			break ;
+		}
+	}
+	for_each_child(child,list)
+	{
+		if (child->type == XML_ELEMENT_NODE)
+		{
+			kw = Lookup(child->name);
+			switch(kw)
+			{
+				case	xsd_simpleType:
+					if (itemtypename == NULL)
+					{
+						simpletype = ParseSimpleType(child);
+					}
+					else
+					{
+						not_allowed_error(child,list);
+					}
+				break ;
+
+				default:
+					not_supported_error(child,list);
+				break ;
+			}
+		}
+	}
+	xsdlist = new xsdList(itemtypename,simpletype) ;
+	return xsdlist;
+}
+
 xsdSimpleType * ParseSimpleType(xmlNodePtr type)
 {
 	xsdSimpleType * xsdtype = NULL;
@@ -716,18 +890,15 @@ xsdSimpleType * ParseSimpleType(xmlNodePtr type)
 			switch(kw)
 			{
 				case	xsd_restriction:
-					xsdtype->m_rest = ParseRestriction(child);
-#if 0
-					if (*xsdtypename == 0 && !xsdtype->m_rest->m_enumvalues.empty())
-					{
-						char enumname[10];
-						sprintf(enumname,"e_an%04d",++nextenum);
-						xsdtype->m_name = enumname ;
-					}
-#endif
+					xsdtype->m_derived = ParseRestriction(child);
+				break ;
+
+				case	xsd_list:
+					xsdtype->m_derived = ParseList(child);
 				break ;
 
 				default:
+					not_supported_error(child,type);
 				break;
 			}
 		}
@@ -748,22 +919,26 @@ void ParseImport(xmlNodePtr import)
 			case	xsd_schemaLocation:
 			{
 				char filename[256];
+				bool found = false ;
+				std::list<std::string*>::iterator si ;
 				const char * value = getContent(attr->children);
 				const char * cp = strrchr(value,'/');
 				if (cp != NULL)
 					cp++;
 				else
 					cp = value;
-				strcpy(filename,cp);
-				FILE * f = fopen(filename,"r");
-				if (f == NULL)
+				for (si = includePaths.begin() ; si != includePaths.end() ; si++)
 				{
-					printf("can't open import \"%s\"\n",filename);
-					printf("download \"%s\" and install locally\n",getContent(attr->children));
-				}
-				else
-				{
-					fclose(f);
+					struct stat st ;
+					std::string * s = *si ;
+					strcpy(filename,s->c_str());
+					strcat(filename,"/");
+					strcat(filename,cp);
+					if (stat(filename,&st) == -1)
+					{
+						continue ;
+					}
+					found = true ;
 					xmlDocPtr doc = xmlReadFile(filename,"utf-8",0);
 					if (doc != NULL)
 					{
@@ -783,8 +958,12 @@ void ParseImport(xmlNodePtr import)
 								}
 							}
 						}
-
 					}
+				}
+				if (!found)
+				{
+					printf("can't open import \"%s\"\n",filename);
+					printf("download \"%s\" and install locally\n",getContent(attr->children));
 				}
 			}
 			break ;
@@ -852,7 +1031,7 @@ xsdSchema * ParseSchema(xmlNodePtr schema)
 				break ;
 
 				default:
-					printf("element %s not implemented in %s\n",child->name,schema->name);
+					not_supported_error(child,schema);
 				break ;
 			}
 		}
@@ -879,6 +1058,11 @@ void xsdType::GenCode(FILE * out,int indent,const char * elemname,const char * s
 	}
 }
 
+void xsdType::GenCode(FILE * out,int indent)
+{
+
+}
+
 const char * xsdType::getCppName()
 {
 	const char * name ;
@@ -886,15 +1070,16 @@ const char * xsdType::getCppName()
 	{
 		case  type_float:					name = "float";					break ;
 		case	type_double:				name = "double";				break ;
-		case	type_byte:    			name = "char";					break ;
 		case	type_unsignedByte: 	name = "unsigned char";	break ;
+		case  type_unsignedShort:	name = "unsigned short";break ;
+		case	type_unsignedInt: 	name = "unsigned int";	break ;
+		case	type_unsignedLong:  name = "unsigned long"; break ;
+		case	type_byte:    			name = "char";					break ;
+		case	type_short:					name = "short";					break ;
 		case	type_int:						name = "int";						break ;
 		case	type_long:    			name = "long";					break ;
-		case	type_unsignedInt: 	name = "unsigned int";	break ;
 		case	type_boolean:				name = "bool";					break ;
-		case	type_short:					name = "short";					break ;
-		case  type_unsignedShort:	name = "unsigned short";break ;
-		case  type_string:        name = "std::string";   break ;
+		case  type_string:        name = "char";   				break ;
 		default:               		name = m_cname.c_str();	break ;
 	}
 	return name ;
@@ -912,7 +1097,7 @@ void xsdRestriction::GenCode(FILE * out,int indent,const char * elemname,const c
 		for (si = m_enumvalues.begin() ; si != m_enumvalues.end() ; si++)
 		{
 			Indent(out,indent+1);
-			fprintf(out,"%s,\n",(*si)->getCppName());
+			fprintf(out,"%s_%s,\n",simplename,(*si)->getCppName());
 		}
 		Indent(out,indent);
 		fprintf(out,"} %s ;\n",elemname);
@@ -921,12 +1106,39 @@ void xsdRestriction::GenCode(FILE * out,int indent,const char * elemname,const c
 	{
 		if (m_base != NULL)
 		{
+			int len = m_length;
+			if (m_maxLength)
+				len = m_maxLength;
 			Indent(out,indent);
 			if (*elemname == 0)
-				fprintf(out,"typedef %s %s;\n",m_base->getCppName(),simplename);
+			{
+				if (len > 1)
+					fprintf(out,"typedef %s %s[%d];\n",m_base->getCppName(),simplename,len);
+				else
+					fprintf(out,"typedef %s %s;\n",m_base->getCppName(),simplename);
+			}
 			else
-				fprintf(out,"%s %s;\n",m_base->getCppName(),elemname);
+			{
+				if (len > 1)
+					fprintf(out,"%s %s[%d];\n",m_base->getCppName(),elemname,len);
+				else
+					fprintf(out,"%s %s;\n",m_base->getCppName(),elemname);
+			}
 		}
+	}
+}
+
+void xsdList::GenCode(FILE *out,int indent,const char * elemname,const char * simplename)
+{
+	xsdType * type = m_type;
+	if (m_typename != NULL)
+	{
+		type = FindType(m_typename);
+	}
+	if (type != NULL)
+	{
+		Indent(out,indent);
+		fprintf(out,"typedef %s %s;\n",type->getCppName(),simplename);
 	}
 }
 
@@ -935,12 +1147,13 @@ void xsdSimpleType::GenCode(FILE * out,int indent,const char * elemname,const ch
 	if (!m_impl)
 	{
 		m_impl = true;
-		if (m_rest != NULL)
-			m_rest->GenCode(out,indent,elemname,getCppName());
+		if (m_derived != NULL)
+			m_derived->GenCode(out,indent,elemname,getCppName());
 		else
 			xsdType::GenCode(out,indent,elemname,supertypename);
 	}
 }
+
 
 void xsdSequence::GenCode(FILE * out,int indent,const char * elemname,const char * supertypename)
 {
@@ -950,14 +1163,15 @@ void xsdSequence::GenCode(FILE * out,int indent,const char * elemname,const char
 	Indent(out,indent);
 	fprintf(out,"{\n");
 	indent++;
-	for (ei = m_list.begin() ; ei != m_list.end() ; ei++)
-	{
-		xsdElement * elem = *ei ;
-		elem->GenCode(out,indent);
-	}
+	GenCode(out,indent);
 	indent--;
 	Indent(out,indent);
 	fprintf(out,"} %s;\n\n",elemname == NULL ? "" : elemname);
+}
+
+void xsdSequence::GenCode(FILE * out,int indent)
+{
+	m_list.GenCode(out,indent,false);
 }
 
 void xsdAll::GenCode(FILE * out,int indent,const char * elemname,const char * supertypename)
@@ -968,26 +1182,57 @@ void xsdAll::GenCode(FILE * out,int indent,const char * elemname,const char * su
 	Indent(out,indent);
 	fprintf(out,"{\n");
 	indent++;
-	for (ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
-	{
-		xsdElement * elem = *ei ;
-		elem->GenCode(out,indent);
-	}
+	GenCode(out,indent);
 	indent--;
 	Indent(out,indent);
 	fprintf(out,"} %s;\n\n",elemname == NULL ? "" : elemname);
 }
 
+void xsdAll::GenCode(FILE * out,int indent)
+{
+	m_elements.GenCode(out,indent,false);
+}
+
+void xsdExtension::GenCode(FILE *out,int indent,const char * elemname,const char * supertypename)
+{
+	Indent(out,indent);
+	fprintf(out,"struct %s\n",supertypename);
+	Indent(out,indent);
+	fprintf(out,"{\n");
+	for (xsdAttrList::iterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
+	{
+		xsdAttribute * attr = *ai ;
+		attr->GenCode(out,indent+1);
+	}
+	Indent(out,indent+1);
+	fprintf(out,"%s %s;\n",m_basetypename->getCppName(),"m_val");
+	Indent(out,indent);
+	fprintf(out,"} %s;\n",elemname);
+}
+
+void xsdSimpleContent::GenCode(FILE *out,int indent,const char * elemname,const char * supertypename)
+{
+	if (!m_impl)
+	{
+		m_impl = true;
+		if (m_content != NULL)
+		{
+			m_content->GenCode(out,indent,elemname,supertypename);
+		}
+	}
+}
+
 void xsdChoice::GenCode(FILE *out,int indent,const char * elemname,const char * supertypename)
+{
+	GenCode(out,indent);
+}
+
+void xsdChoice::GenCode(FILE *out,int indent)
 {
 	if (!m_impl)
 	{
 		m_impl = true ;
-		for (elementIterator ei = m_elements.begin(); ei != m_elements.end() ; ei++)
-		{
-			xsdElement * elem = *ei;
-			elem->GenCode(out,indent);
-		}
+		m_elements.GenCode(out,indent,true);
 	}
 }
 
@@ -998,152 +1243,247 @@ void xsdComplexType::GenCode(FILE * out,int indent,const char * elemname,const c
 		if (!m_cname.empty())
 			supertypename = getCppName();
 		m_impl = true;
-		if (m_type != NULL)
+		if (!m_attributes.empty())
 		{
-			switch(m_type->m_tag)
+			Indent(out,indent);
+			fprintf(out,"struct %s\n",supertypename);
+			Indent(out,indent);
+			fprintf(out,"{\n");
+			for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
 			{
-				case	type_sequence:
-					((xsdSequence*)m_type)->GenCode(out,indent,elemname,supertypename);
-				break;
-
-				case	type_choice:
-					((xsdChoice*)m_type)->GenCode(out,indent,elemname,supertypename);
-				break ;
-
-				case	type_all:
-					((xsdAll*)m_type)->GenCode(out,indent,elemname,supertypename);
-				break ;
-
-				default:
-				break ;
+				xsdAttribute * attr = *ai;
+				attr->GenCode(out,indent+1);
 			}
+			if (m_type != NULL)
+				m_type->GenCode(out,indent+1);
+			Indent(out,indent);
+			fprintf(out,"} %s;\n",elemname);
+		}
+		else if (m_type != NULL)
+		{
+			m_type->GenCode(out,indent,elemname,supertypename);
 		}
 	}
 }
 
-void xsdElement::GenCode(FILE *out,int indent)
+void xsdElement::GenCode(FILE *out,int indent,bool choice)
 {
+	std::string cppName;
+	if (choice)
+		cppName = "* ";
+	cppName += getCppName();
 	if (m_type != NULL)
-		m_type->GenCode(out,indent,getCppName(),"");
+		m_type->GenCode(out,indent,cppName.c_str(),"");
 	else
 	{
 		if (m_typename != NULL)
 		{
-			xsdType * type = FindType(m_typename->m_name.c_str());
+			xsdType * type = FindType(m_typename);
 			Indent(out,indent);
 			if (type == NULL)
 			{
 				printf("Element %s has unknown type %s\n",getName(),m_typename->m_name.c_str());
-				fprintf(out,"%s %s;\n",m_typename->m_name.c_str(),getCppName());
+				fprintf(out,"%s %s;\n",m_typename->m_name.c_str(),cppName.c_str());
 			}
 			else
 			{
-				fprintf(out,"%s %s;\n",type->getCppName(),getCppName());
+				fprintf(out,"%s %s;\n",type->getCppName(),cppName.c_str());
 			}
 		}
 	}
 }
 
-void CalcDependency(xsdElementList & elist, xsdTypeList & list);
-
-void CalcDependency(xsdSequence * seq,xsdTypeList & list)
+void xsdGroup::CalcDependency(xsdTypeList & list)
 {
-	CalcDependency(seq->m_list,list);
-}
-
-void CalcDependency(xsdAll * all,xsdTypeList & list)
-{
-	CalcDependency(all->m_elements,list);
-}
-
-void CalcDependency(xsdChoice * type,xsdTypeList & list)
-{
-	CalcDependency(type->m_elements,list);
-	for (sequenceIterator si = type->m_sequences.begin() ; si != type->m_sequences.end() ; si++)
+	if (m_type != NULL)
 	{
-		CalcDependency(*si,list);
+		m_type->CalcDependency(list);
 	}
 }
-void CalcDependeny(xsdComplexType * type,xsdTypeList & list)
+
+void xsdGroup::GenCode(FILE * out,int indent)
 {
-	if (type->m_type != NULL)
+	if (m_type != NULL)
+		m_type->GenCode(out,indent);
+}
+
+void xsdGroup::GenCode(FILE * out,int indent,const char * elemname,const char * supertypname)
+{
+	if (m_type != NULL)
 	{
-		switch(type->m_type->m_tag)
+		m_type->GenCode(out,indent,elemname,supertypname);
+	}
+}
+
+void xsdGroupList::CalcDependency(xsdTypeList & list)
+{
+	for(groupIterator gi = begin() ; gi != end() ; gi++)
+	{
+		(*gi)->CalcDependency(list);
+	}
+}
+
+void xsdSimpleContent::CalcDependency(xsdTypeList & list)
+{
+	if (m_content != NULL)
+	{
+		m_content->CalcDependency(list);
+	}
+}
+
+void xsdList::CalcDependency(xsdTypeList & list)
+{
+	xsdType * type = m_type ;
+	if (type == NULL && m_typename != NULL)
+		type = FindType(m_typename);
+	if (type != NULL)
+		type->CalcDependency(list);
+}
+
+void xsdRestriction::CalcDependency(xsdTypeList & list)
+{
+	if (m_base != NULL)
+		m_base->CalcDependency(list);
+}
+
+void xsdAttribute::CalcDependency(xsdTypeList & list)
+{
+	if (m_type != NULL)
+		m_type->CalcDependency(list);
+}
+
+void xsdAttribute::GenCode(FILE * out,int indent)
+{
+	if (m_type != NULL)
+	{
+		Indent(out,indent);
+		fprintf(out,"%s %s;\n",m_type->getCppName(),m_cname.c_str());
+	}
+}
+
+void xsdExtension::CalcDependency(xsdTypeList & list)
+{
+	if (m_basetypename != NULL)
+	{
+		xsdType * type = FindType(m_basetypename);
+		if (type != NULL)
+			type->CalcDependency(list);
+		for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
 		{
-			case	type_sequence:
-				CalcDependency((xsdSequence*)type->m_type,list);
-			break ;
-			case	type_choice:
-				CalcDependency((xsdChoice*)type->m_type,list);
-			break ;
-			case	type_all:
-				CalcDependency((xsdAll*)type->m_type,list);
-			break ;
-			default:
-			break ;
+			xsdAttribute * attr = *ai;
+			attr->CalcDependency(list);
 		}
 	}
 }
 
-void CalcDependency(xsdSimpleType* type,xsdTypeList & list)
+void xsdSequenceList::CalcDependency(xsdTypeList & list)
 {
-	if (type->m_name.empty())
-		return ;
-	if (type->m_rest != NULL && !type->m_indeplist)
+	for (sequenceIterator si = begin() ; si != end() ; si++)
 	{
-		printf("add dependency %s\n",type->getName());
-		type->m_indeplist = true ;
-		list.push_back(type);
+		(*si)->CalcDependency(list);
 	}
 }
 
-void CalcDependency(xsdElementList & elist, xsdTypeList & list)
+void xsdSequence::CalcDependency(xsdTypeList & list)
+{
+	m_list.CalcDependency(list);
+}
+
+void xsdAll::CalcDependency(xsdTypeList & list)
+{
+	m_elements.CalcDependency(list);
+}
+
+
+void xsdChoice::CalcDependency(xsdTypeList & list)
+{
+	m_elements.CalcDependency(list);
+	m_sequences.CalcDependency(list);
+	m_groups.CalcDependency(list);
+}
+
+void xsdComplexType::CalcDependency(xsdTypeList & list)
+{
+	if (!m_indeplist)
+	{
+		m_indeplist = true;
+		for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
+		{
+			(*ai)->CalcDependency(list);
+		}
+		if (m_type != NULL)
+		{
+			m_type->CalcDependency(list);
+		}
+		list.push_back(this);
+	}
+}
+
+void xsdSimpleType::CalcDependency(xsdTypeList & list)
+{
+	if (m_name.empty())
+		return ;
+	if (m_derived != NULL && !m_indeplist)
+	{
+		m_derived->CalcDependency(list);
+		m_indeplist = true ;
+		list.push_back(this);
+	}
+}
+
+void xsdElement::CalcDependency(xsdTypeList & list)
+{
+	xsdType * type = m_type;
+	printf("CalcDependency for %s\n",getName());
+	if (type == NULL)
+	{
+		if (m_typename != NULL)
+		{
+			type = FindType(m_typename);
+			if (type == NULL)
+			{
+				printf("element \"%s\": type  \"%s\" not found\n",getName(),m_typename->m_name.c_str());
+			}
+		}
+		else
+		{
+			printf("element \"%s\" has not type\n",getName());
+		}
+	}
+	if (type != NULL)
+	{
+		type->CalcDependency(list);
+	}
+}
+
+void xsdElementList::CalcDependency(xsdTypeList & list)
 {
 	elementIterator eli ;
 	typeIterator tli ;
-	for (eli = elist.begin() ; eli != elist.end(); eli++)
+	for (eli = begin() ; eli != end(); eli++)
 	{
 		xsdElement * elem = *eli ;
-		xsdType * type = elem->m_type;
-		printf("CalcDependency for %s\n",elem->getName());
-		if (type == NULL)
-		{
-			if (elem->m_typename != NULL)
-			{
-				type = FindType(elem->m_typename->m_name.c_str());
-				if (type == NULL)
-				{
-					printf("element %s: type %s not found\n",elem->getName(),elem->m_typename->m_name.c_str());
-				}
-			}
-			else
-			{
-				printf("element %s has not type\n",elem->getName());
-			}
-		}
-		if (type != NULL)
-		{
-			switch(type->m_tag)
-			{
-				case	type_complex:
-					if (!type->m_indeplist)
-					{
-						type->m_indeplist = true ;
-						CalcDependeny((xsdComplexType*)type,list);
-						printf("add dependency %s\n",type->getName());
-						list.push_back(type);
-					}
-				break ;
-
-				case	type_simple:
-					CalcDependency((xsdSimpleType*)type,list);
-				break ;
-
-				default:
-				break ;
-			}
-		}
+		elem->CalcDependency(list);
 	}
+}
+
+void xsdElementList::GenCode(FILE * out,int indent,bool choice)
+{
+	for (elementIterator ei = begin() ; ei != end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		elem->GenCode(out,indent,choice);
+	}
+}
+
+xsdType * createDateTime()
+{
+	xsdSimpleType * st = new xsdSimpleType("xs:dateTime");
+	xsdRestriction *r = new xsdRestriction();
+	r->m_base = FindType("xs:string");
+	r->m_maxLength=20;
+	st->m_derived = r ;
+	return st ;
 }
 
 int main(int argc, char * argv[])
@@ -1154,8 +1494,36 @@ int main(int argc, char * argv[])
 
 	for (int i = 1 ; i < argc ; i++)
 	{
-		xsdfilename = argv[i];
-		break ;
+		const char * arg = argv[i];
+		if (arg[0] == '-')
+		{
+			switch(arg[1])
+			{
+				case	'I':
+					if (arg[2])
+						AddIncludePath(arg+2); // -Iincludepath
+					else
+					{
+						i++;
+						if (i < argc)
+						{
+							AddIncludePath(argv[i]); // -I includepath
+						}
+					}
+				break ;
+
+				default:
+					printf("unkown option \"%s\"\n",arg);
+				break ;
+			}
+		}
+		else
+		{
+			if (xsdfilename == NULL)
+				xsdfilename = argv[i];
+			else
+				printf("only one inputfile allowed\n");
+		}
 	}
 	if (xsdfilename == NULL)
 	{
@@ -1196,7 +1564,7 @@ int main(int argc, char * argv[])
 		AddType(new xsdType("xs:unsignedShort",type_unsignedShort,true));
 		AddType(new xsdType("xs:unsignedByte",type_unsignedByte,true));
 		AddType(new xsdType("xs:unsignedPositiveInteger",type_positiveInteger,true));
-
+		AddType(createDateTime());
 		for_each_child(child,doc)
 		{
 			if (child->type == XML_ELEMENT_NODE)
@@ -1217,7 +1585,7 @@ int main(int argc, char * argv[])
 		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
 		{
 			xsdNamespace * ns = *nsi ;
-			CalcDependency(ns->m_elements,deplist);
+			ns->m_elements.CalcDependency(deplist);
 		}
 		for (typeIterator ti = deplist.begin() ; ti != deplist.end() ; ti++)
 		{
@@ -1229,6 +1597,7 @@ int main(int argc, char * argv[])
 		{
 			xsdNamespace * ns = *nsi ;
 			elementIterator ei ;
+			fprintf(outfile,"/*\n Namespace %s\n*/\n\n",ns->m_name.c_str());
 			for (ei = ns->m_elements.begin() ; ei != ns->m_elements.end(); ei++)
 			{
 				xsdElement * elem = *ei ;
@@ -1236,9 +1605,7 @@ int main(int argc, char * argv[])
 				{
 					if (!elem->m_type->m_impl)
 					{
-						if (elem->m_type->m_name.empty())
-							elem->m_type->m_name = elem->m_name;
-						elem->m_type->GenCode(outfile,1,"","");
+						elem->m_type->GenCode(outfile,1,"",elem->getCppName());
 					}
 				}
 			}
@@ -1246,6 +1613,3 @@ int main(int argc, char * argv[])
 	}
 	return 0 ;
 }
-
-
-
