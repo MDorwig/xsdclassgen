@@ -872,33 +872,33 @@
 
   <!-- Definition of root element and it's main elements -->
 
-  <xs:element         name="ESPA-X">
+  <xs:element         name="ESPA-X" id="ESPAX_X">
     <xs:complexType>
       <xs:choice>
-        <xs:element   name="IND.ERROR"        type="ex:errorIndication"/>
-        <xs:element   name="REQ.LOGIN"        type="ex:loginRequest"/>
-        <xs:element   name="RSP.LOGIN"        type="ex:loginResponse"/>
-        <xs:element   name="REQ.HEARTBEAT"    type="ex:heartbeatRequest"/>
-        <xs:element   name="RSP.HEARTBEAT"    type="ex:heartbeatResponse"/>
-        <xs:element   name="REQ.LOGOUT"       type="ex:logoutRequest"/>
-        <xs:element   name="RSP.LOGOUT"       type="ex:logoutResponse"/>
-        <xs:element   name="CMD.SHUTDOWN"     type="ex:shutdownCommand"/>
-        <xs:element   name="REQ.S-CONDITION"  type="ex:sConditionRequest"/>
-        <xs:element   name="RSP.S-CONDITION"  type="ex:sConditionResponse"/>
-        <xs:element   name="REQ.S-PARAMETERS" type="ex:sParametersRequest"/>
-        <xs:element   name="RSP.S-PARAMETERS" type="ex:sParametersResponse"/>
-        <xs:element   name="IND.S-SYSTEM"     type="ex:sSystemIndication"/>
-        <xs:element   name="REQ.P-START"      type="ex:pStartRequest"/>
-        <xs:element   name="RSP.P-START"      type="ex:pStartResponse"/>
-        <xs:element   name="IND.P-STARTED"    type="ex:pStartedIndication"/>
-        <xs:element   name="REQ.P-STOP"       type="ex:pStopRequest"/>
-        <xs:element   name="RSP.P-STOP"       type="ex:pStopResponse"/>
-        <xs:element   name="IND.P-ENDED"      type="ex:pEndedIndication"/>
-        <xs:element   name="REQ.P-GETSTAT"    type="ex:pGetstatRequest"/>
-        <xs:element   name="RSP.P-GETSTAT"    type="ex:pGetstatResponse"/>
-        <xs:element   name="IND.P-SYNC"       type="ex:pSyncIndication"/>
-        <xs:element   name="IND.P-STATUS"     type="ex:pStatusIndication"/>
-        <xs:element   name="IND.P-EVENT"      type="ex:pEventIndication"/>
+        <xs:element   name="IND.ERROR"        id="IND_ERROR"        type="ex:errorIndication"/>
+        <xs:element   name="REQ.LOGIN"        id="REQ_LOGIN"        type="ex:loginRequest"/>
+        <xs:element   name="RSP.LOGIN"        id="RSP_LOGIN"        type="ex:loginResponse"/>
+        <xs:element   name="REQ.HEARTBEAT"    id="REQ_HEARTBEAT"    type="ex:heartbeatRequest"/>
+        <xs:element   name="RSP.HEARTBEAT"    id="RSP_HEARTBEAT"    type="ex:heartbeatResponse"/>
+        <xs:element   name="REQ.LOGOUT"       id="REQ_LOGOUT"       type="ex:logoutRequest"/>
+        <xs:element   name="RSP.LOGOUT"       id="RSP_LOGOUT"       type="ex:logoutResponse"/>
+        <xs:element   name="CMD.SHUTDOWN"     id="CMD_SHUTDOWN"     type="ex:shutdownCommand"/>
+        <xs:element   name="REQ.S-CONDITION"  id="REQ_S_CONDITION"  type="ex:sConditionRequest"/>
+        <xs:element   name="RSP.S-CONDITION"  id="RSP_S_CONDITION"  type="ex:sConditionResponse"/>
+        <xs:element   name="REQ.S-PARAMETERS" id="REQ_S_PARAMETERS" type="ex:sParametersRequest"/>
+        <xs:element   name="RSP.S-PARAMETERS" id="RSP_S_PARAMETERS" type="ex:sParametersResponse"/>
+        <xs:element   name="IND.S-SYSTEM"     id="IND_S_SYSTEM"     type="ex:sSystemIndication"/>
+        <xs:element   name="REQ.P-START"      id="REQ_P_START"      type="ex:pStartRequest"/>
+        <xs:element   name="RSP.P-START"      id="RSP_P_START"      type="ex:pStartResponse"/>
+        <xs:element   name="IND.P-STARTED"    id="IND_P_STARTED"    type="ex:pStartedIndication"/>
+        <xs:element   name="REQ.P-STOP"       id="REQ_P_STOP"       type="ex:pStopRequest"/>
+        <xs:element   name="RSP.P-STOP"       id="RSP_P_STOP"       type="ex:pStopResponse"/>
+        <xs:element   name="IND.P-ENDED"      id="IND_P_ENDED"      type="ex:pEndedIndication"/>
+        <xs:element   name="REQ.P-GETSTAT"    id="REQ_P_GETSTAT"    type="ex:pGetstatRequest"/>
+        <xs:element   name="RSP.P-GETSTAT"    id="RSP_P_GETSTAT"    type="ex:pGetstatResponse"/>
+        <xs:element   name="IND.P-SYNC"       id="IND_P_SYNC"       type="ex:pSyncIndication"/>
+        <xs:element   name="IND.P-STATUS"     id="IND_P_STATUS"     type="ex:pStatusIndication"/>
+        <xs:element   name="IND.P-EVENT"      id="IND.P-EVENT"      type="ex:pEventIndication"/>
         <xs:element   name="PROPRIETARY"      type="ex:proprietaryRoot"/>
       </xs:choice>
       <xs:attribute   name="version"          type="ex:enumValidVersions"

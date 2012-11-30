@@ -128,8 +128,8 @@
       <xs:enumeration value="7"/>
       <xs:enumeration value="8"/>
       <xs:enumeration value="9"/>
-      <xs:enumeration value="*"/>
-      <xs:enumeration value="#"/>
+      <xs:enumeration value="*" id="star"/>
+      <xs:enumeration value="#" id="hash"/>
     </xs:restriction>
   </xs:simpleType>
 
@@ -146,8 +146,8 @@
       <xs:enumeration value="7"/>
       <xs:enumeration value="8"/>
       <xs:enumeration value="9"/>
-      <xs:enumeration value="*"/>
-      <xs:enumeration value="#"/>
+      <xs:enumeration value="*" />
+      <xs:enumeration value="#" />
       <xs:enumeration value="Off"/>
     </xs:restriction>
   </xs:simpleType>
@@ -1461,48 +1461,48 @@
   
   <!-- Definition of root element and it's main elements -->
 
-  <xs:element         name="DAKS_ESPA-X">
+  <xs:element         name="DAKS_ESPA-X" id="DAKS_ESPA_X">
     <xs:complexType>
       <xs:choice>
-	<xs:element   name="DAKS-STATUS"      type="dx:typeDaksStatus"/>
+	<xs:element   name="DAKS-STATUS" id="DAKS_STATUS"     type="dx:typeDaksStatus"/>
         <xs:element   name="PARAMS1"          type="dx:typeParams1"/>
         <xs:element   name="START1"           type="dx:typeStart1"/>
         <xs:element   name="EVENT1"           type="dx:typeEvent1"/>
-        <xs:element   name="REQ.A-GETANN"     type="dx:typeGetAnnRequest"/>
-        <xs:element   name="RSP.A-GETANN"     type="dx:typeGetAnnResponse"/>
-        <xs:element   name="REQ.A-FREEANN"    type="dx:typeFreeAnnRequest"/>
-        <xs:element   name="RSP.A-FREEANN"    type="dx:typeFreeAnnResponse"/>
-        <xs:element   name="REQ.A-SETANN"     type="dx:typeSetAnnRequest"/>
-        <xs:element   name="RSP.A-SETANN"     type="dx:typeSetAnnResponse"/>
-        <xs:element   name="REQ.A-TTV"        type="dx:typeTTVRequest"/>
-        <xs:element   name="RSP.A-TTV"        type="dx:typeTTVResponse"/>
-        <xs:element   name="IND.A-TTV"        type="dx:typeTTVIndication"/>
-        <xs:element   name="IND.A-ANNCHG"     type="dx:typeAnnChangedIndication"/>
-        <xs:element   name="REQ.G-GETGRP"     type="dx:typeGetGroupRequest"/>
-        <xs:element   name="RSP.G-GETGRP"     type="dx:typeGetGroupResponse"/>
-        <xs:element   name="REQ.G-FREEGRP"    type="dx:typeFreeGroupRequest"/>
-        <xs:element   name="RSP.G-FREEGRP"    type="dx:typeFreeGroupResponse"/>
-        <xs:element   name="REQ.S-ADDMBR"     type="dx:typeAddMemberRequest"/>
-        <xs:element   name="RSP.S-ADDMBR"     type="dx:typeAddMemberResponse"/>
-        <xs:element   name="CMD.GRPMBR-CTRL"  type="dx:typeGrpMbrControl"/>
-        <xs:element   name="REQ.S-REMMBR"     type="dx:typeRemoveMemberRequest"/>
-        <xs:element   name="RSP.S-REMMBR"     type="dx:typeRemoveMemberResponse"/>
-        <xs:element   name="REQ.T-START"      type="dx:typeStartRequest"/>
-        <xs:element   name="RSP.T-START"      type="dx:typeStartResponse"/>
-<!--    <xs:element   name="IND.T-STARTED"    type="dx:typeStartedIndication"/>
-        <xs:element   name="IND.T-STATUS"     type="dx:typeStatusIndication"/> -->
-        <xs:element   name="REQ.T-STOP"       type="dx:typeStopRequest"/>
-        <xs:element   name="RSP.T-STOP"       type="dx:typeStopResponse"/>
-        <xs:element   name="IND.T-ENDED"      type="dx:typeEndedIndication"/>
-        <xs:element   name="REQ.T-CNCTCTRL"   type="dx:typeCnctControlRequest"/>
-        <xs:element   name="RSP.T-CNCTCTRL"   type="dx:typeCnctControlResponse"/>
-        <xs:element   name="IND.T-CNCTEVENT"  type="dx:typeCnctEventIndication"/>
-        <xs:element   name="REQ.T-DLGCTRL"    type="dx:typeDlgControlRequest"/>
-        <xs:element   name="RSP.T-DLGCTRL"    type="dx:typeDlgControlResponse"/>
-        <xs:element   name="IND.T-DLGEVENT"   type="dx:typeDlgEventIndication"/>
-        <xs:element   name="REQ.I-SWITCH"     type="dx:typeInfotelSwitchRequest"/>
-        <xs:element   name="RSP.I-SWITCH"     type="dx:typeInfotelSwitchResponse"/>
-        <xs:element   name="IND.I-SWITCHED"   type="dx:typeInfotelSwitchedIndication"/>
+        <xs:element   name="REQ.A-GETANN"    id="REQ_A_GETANN"     type="dx:typeGetAnnRequest"/>
+        <xs:element   name="RSP.A-GETANN"    id="RSP_A_GETANN"     type="dx:typeGetAnnResponse"/>
+        <xs:element   name="REQ.A-FREEANN"   id="REQ_A_FREEANN"    type="dx:typeFreeAnnRequest"/>
+        <xs:element   name="RSP.A-FREEANN"   id="RSP_A_FREEANN"    type="dx:typeFreeAnnResponse"/>
+        <xs:element   name="REQ.A-SETANN"    id="REQ_A_SETANN"     type="dx:typeSetAnnRequest"/>
+        <xs:element   name="RSP.A-SETANN"    id="RSP_A_SETANN"     type="dx:typeSetAnnResponse"/>
+        <xs:element   name="REQ.A-TTV"       id="REQ_A_TTV"        type="dx:typeTTVRequest"/>
+        <xs:element   name="RSP.A-TTV"       id="RSP_A_TTV"        type="dx:typeTTVResponse"/>
+        <xs:element   name="IND.A-TTV"       id="IND_A_TTV"        type="dx:typeTTVIndication"/>
+        <xs:element   name="IND.A-ANNCHG"    id="IND_A_ANNCGH"     type="dx:typeAnnChangedIndication"/>
+        <xs:element   name="REQ.G-GETGRP"    id="REQ_G_GETGRP"     type="dx:typeGetGroupRequest"/>
+        <xs:element   name="RSP.G-GETGRP"    id="RSP_G_GETGRP"     type="dx:typeGetGroupResponse"/>
+        <xs:element   name="REQ.G-FREEGRP"   id="REQ_G_FREEGRP"    type="dx:typeFreeGroupRequest"/>
+        <xs:element   name="RSP.G-FREEGRP"   id="RSP_G_FREEGRP"    type="dx:typeFreeGroupResponse"/>
+        <xs:element   name="REQ.S-ADDMBR"    id="REQ_S_ADDMBR"     type="dx:typeAddMemberRequest"/>
+        <xs:element   name="RSP.S-ADDMBR"    id="RSP_S_ADDMBR"     type="dx:typeAddMemberResponse"/>
+        <xs:element   name="CMD.GRPMBR-CTRL" id="CMD_GRPMBR_CTRL"  type="dx:typeGrpMbrControl"/>
+        <xs:element   name="REQ.S-REMMBR"    id="REQ_S_REMMBR"     type="dx:typeRemoveMemberRequest"/>
+        <xs:element   name="RSP.S-REMMBR"    id="RSP_S_REMMBR"     type="dx:typeRemoveMemberResponse"/>
+        <xs:element   name="REQ.T-START"     id="REQ_T_START"      type="dx:typeStartRequest"/>
+        <xs:element   name="RSP.T-START"     id="RSP_T_START"      type="dx:typeStartResponse"/>
+<!--    <xs:element   name="IND.T-STARTED"   id="IND_T_STARTED" type="dx:typeStartedIndication"/>
+        <xs:element   name="IND.T-STATUS"    id="IND_T_STATUS" type="dx:typeStatusIndication"/> -->
+        <xs:element   name="REQ.T-STOP"      id="REQ_T_STOP"       type="dx:typeStopRequest"/>
+        <xs:element   name="RSP.T-STOP"      id="RSP_T_STOP"       type="dx:typeStopResponse"/>
+        <xs:element   name="IND.T-ENDED"     id="IND_T_ENDED"      type="dx:typeEndedIndication"/>
+        <xs:element   name="REQ.T-CNCTCTRL"  id="REQ_T_CNCTCTRL"   type="dx:typeCnctControlRequest"/>
+        <xs:element   name="RSP.T-CNCTCTRL"  id="RSP_T_CNCTCTRL"   type="dx:typeCnctControlResponse"/>
+        <xs:element   name="IND.T-CNCTEVENT" id="IND_T_CNCTEVENT"  type="dx:typeCnctEventIndication"/>
+        <xs:element   name="REQ.T-DLGCTRL"   id="REQ_T_DLGCTRL"    type="dx:typeDlgControlRequest"/>
+        <xs:element   name="RSP.T-DLGCTRL"   id="RSP_T_DLGCTRL"    type="dx:typeDlgControlResponse"/>
+        <xs:element   name="IND.T-DLGEVENT"  id="IND_T_DLGEVENT"   type="dx:typeDlgEventIndication"/>
+        <xs:element   name="REQ.I-SWITCH"    id="REQ_I_SWITCH"     type="dx:typeInfotelSwitchRequest"/>
+        <xs:element   name="RSP.I-SWITCH"    id="RSP_I_SWITCH"     type="dx:typeInfotelSwitchResponse"/>
+        <xs:element   name="IND.I-SWITCHED"  id="IND_I_SWITCHED"   type="dx:typeInfotelSwitchedIndication"/>
       </xs:choice>
       <xs:attribute   name="version"          type="dx:enumDAKSVersions"
                                               use="required"/>
