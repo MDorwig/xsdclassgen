@@ -1,0 +1,1410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:annotation>
+		<xs:appinfo>
+			<version>1.4a</version>
+			<date>2011-11-14</date>
+			<revision>
+				<version>1.0</version>
+				<change>Approved</change>
+			</revision>
+			<revision>
+				<version>1.1</version>
+				<change>Added introduction. Updated text for Output_Activity</change>
+			</revision>
+			<revision>
+				<version>1.2</version>
+				<change>Changed constraints for Alarm Data, compensates for i75/i62 limitations. &lt;BR&gt; Added element "Intensity" to Message service.</change>
+
+			</revision>
+			<revision>
+				<version>1.3</version>
+				<change>Added Function Key ID</change>
+			</revision>
+			<revision>
+				<version>1.4</version>
+				<change>Added possibility to remove Reject option for message with confirmation</change>
+			</revision>
+			<revision>
+				<version>1.4a </version>
+				<change> Default parameter values in documentation conforming to Unite protocol. </change>
+			</revision>
+			<introduction>
+				<text>
+					The OA-XML protocol contains definitions for messages that can be sent and received using an OA-XML enabled interface, e.g. OAJ or OAPv4.&lt;BR&gt;
+					&lt;B&gt;Note:&lt;/B&gt; Not all devices or carrier interfaces handle every tag or service available in this protocol. The device have to have support for the XML tag that are to be used. See
+					Data Sheets for each device for more information.
+				</text>
+			</introduction>
+		</xs:appinfo>
+	</xs:annotation>
+	<xs:element name="service" type="oaType">
+		<xs:annotation>
+			<xs:documentation>This is the root node used in the OA protocol</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:complexType name="oaType">
+		<xs:sequence>
+			<xs:element name="Id" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Message ID</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:pattern value="[0-9,a-f,A-F]{1,8}"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:choice>
+				<xs:element name="Message" type="oaMessage">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							That is the basic messaging  which enables an application to send a text message to a specific destination
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Message_with_Confirmation_Request" type="oaPagingConfirmation">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message extends the basic messaging with the possibility to request user confirmation for reading of message
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Message_Confirmation_Response" type="oaPagingConfirmationResponse">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This is the message sent back after a user has chosen to accept or reject a Message_with_Confirmation_Request. 
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Interactive_Message" type="oaInteractiveMessage">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							Interactive Messaging (IM) is an enhancement of basic messaging
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Interactive_Message_Response" type="oaInteractiveMessageResponse">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							Response on an Interactive_Message. 
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Erase_Message" type="oaMessageDeletion">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message is used to erase a previously sent Message, Message_with_Confirmation_Request or Interactive_Message
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Alarm" type="oaAlarm">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message includes information about an alarm from a portable device within the system
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="User_data" type="oaUserKeyData">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message will be received when mobile data is transmitted from a portable device
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Input_Activity" type="oaInputActivity">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message indicates, for example, that an input on an Alarm Module in System 900 has been activated.
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Output_Activity" type="oaOutputActivity">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							With this message it is possible to activate an output on an Output Module in System 900.
+							It is possible to activate several outputs in the same message.
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Location_Data" type="oaLocationInfo">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message includes location information, for example when an alarm has been sent this block gives the location of the alarming unit.
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Location_Request" type="oaLocationRequest">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This is a request to the portable device to send a Location_Response message back with current location.
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Location_Response" type="oaLocationResponse">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							Response to a Location_Request.
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Availability_Status" type="oaAvailabilityInfo">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message will be sent when the availability information for a portable device has been updated.
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Availability_Query" type="oaAvailabilityRequest">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message queries the availability status for a certain portable
+ device
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Availability_Response" type="oaAvailabilityResponse">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							Answer to a Availability_Query
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Call_Setup" type="oaCallSetup">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message is used to initiate calls in the system
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Call_Setup_Response" type="oaCallSetupResponse">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message is sent back when Request_response element is set in the Call_Setup
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Device_Property_Request" type="oaPropertyRequest">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This message is used to set or retrieve properties in a portable
+ device
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="Device_Property_Response" type="oaPropertyResponse">
+					<xs:annotation>
+						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
+							This is the response from the device on a Device_Property_Request
+						</xs:documentation>
+						
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
+		</xs:sequence>
+		<xs:attribute fixed="1.0" name="version" type="xs:string" use="required"/>
+	</xs:complexType>
+	<xs:complexType name="oaPropertyRequest">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Type">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines type of property request</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="set"/>
+						<xs:enumeration value="get"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Device_profile">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Device profile</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:pattern value="[0-9]?"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaPropertyResponse">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Device_profile">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Device profile</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element minOccurs="0" name="Status">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Status</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="success"/>
+									<xs:enumeration value="failed"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Value">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Value</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="0"/>
+									<xs:maxInclusive value="9"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaCallSetup">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Text">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Text that is displayed in the receiving device</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="1000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Beep">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Beep characteristics</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:integer">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="99"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Indication">
+				<xs:annotation>
+					<xs:documentation>The indication element  brings together a group of elements defining how to indicate the message for a user.</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element minOccurs="0" name="Urgent">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The message is defined as urgent and will break through silent mode</xs:documentation>
+								
+							</xs:annotation>
+						</xs:element>
+						<xs:element minOccurs="0" name="Colour">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines the colour of the indication</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="Red"/>
+									<xs:enumeration value="Green"/>
+									<xs:enumeration value="Blue"/>
+									<xs:enumeration value="Yellow"/>
+									<xs:enumeration value="Orange"/>
+									<xs:enumeration value="Cyan"/>
+									<xs:enumeration value="Purple"/>
+									<xs:enumeration value="Brown"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Call_number">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The number to dial when the device answers the call (Pick-up-call number)</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="32"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="Call_type">
+				<xs:annotation>
+					<xs:documentation>Defines the type of call that should be set up for a portable. </xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="normal"/>
+						<xs:enumeration value="normalVoicePTT"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Answer_mode">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how the call shall be answered in the receiving device</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="manual"/>
+						<xs:enumeration value="auto"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Disconnect_mode">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how the call shall be disconnected</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="manual"/>
+						<xs:enumeration value="auto"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Speaker_mode">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how the speaker on the receiving device shall operate during the call</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="off"/>
+						<xs:enumeration value="normal"/>
+						<xs:enumeration value="loud"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Microphone_mode">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how the microphone on the receiving device shall operate during the call</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="PTT"/>
+						<xs:enumeration value="on"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Request_response">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines that progress information shall be reported back to the sender</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="TTL">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">This is the total time the paging is valid in seconds after it has arrived to the device</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:integer">
+						<xs:minInclusive value="1"/>
+						<xs:maxInclusive value="999999"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Priority" type="elemPagingPrio"/>
+			<xs:element minOccurs="0" name="Tag">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">A text that categorises the sent block</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="25"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaCallSetupResponse">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Priority" type="elemPagingPrio">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Message priority</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Status">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Call response status</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="accepted"/>
+						<xs:enumeration value="rejected"/>
+						<xs:enumeration value="completed"/>
+						<xs:enumeration value="failed"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaOutputActivity">
+		<xs:sequence>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="Activation">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element minOccurs="0" name="Type">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Definition of activity</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="reset"/>
+									<xs:enumeration value="activate"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Duration">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">How long the output should be active</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="1"/>
+									<xs:maxInclusive value="999999"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Tag">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">A text that categorises the sent block</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="25"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaInputActivity">
+		<xs:sequence>
+			<xs:element name="Status">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The state of the activated input</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="active"/>
+						<xs:enumeration value="inactive"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="Description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">This is a description of the input</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="160"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="elemUniteTime">
+		<xs:annotation>
+			<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Time when this alarm was triggered</xs:documentation>
+			
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[0-9]{2}:[0-9]{2}:[0-9]{2}:[0-9]{2}:[0-9]{2}:[0-9]{2}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="elemAlarmType">
+		<xs:annotation>
+			<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The alarm type</xs:documentation>
+			
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="monitorReceiver"/>
+			<xs:enumeration value="test"/>
+			<xs:enumeration value="noNewLocation"/>
+			<xs:enumeration value="pushButton1"/>
+			<xs:enumeration value="pushButton2"/>
+			<xs:enumeration value="manDown"/>
+			<xs:enumeration value="pullCord"/>
+			<xs:enumeration value="external"/>
+			<xs:enumeration value="emergencyPhoneCall"/>
+			<xs:enumeration value="verification"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="oaAlarm">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Type" type="elemAlarmType"/>
+			<xs:element minOccurs="0" name="Time" type="elemUniteTime"/>
+			<xs:element minOccurs="0" name="Data">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Data included in the Alarm block</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="0"/>
+						<xs:maxLength value="50"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Description">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Informational text to log-file, human user etc</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="160"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="LowBattery">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Indicates that the device has low battery </xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="Location_Data" type="oaLocationInfo">
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaUserKeyData">
+		<xs:sequence>
+			<xs:element name="Data">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Keypad data from portable device.</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="0"/>
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaLocationInfo">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="unbounded" name="Location">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Location</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Code">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Location code</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:minLength value="1"/>
+									<xs:maxLength value="50"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="Type">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The type of location</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="system900_IRLF"/>
+									<xs:enumeration value="9dBaseStation"/>
+									<xs:enumeration value="9dSignPost"/>
+									<xs:enumeration value="manual"/>
+									<xs:enumeration value="system900RI"/>
+									<xs:enumeration value="802.11MACAddress"/>
+									<xs:enumeration value="teleCARE_M-LFB"/>
+									<xs:enumeration value="teleCARE_M-LPR/RF"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Time">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Time in seconds since location code was received</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="0"/>
+									<xs:maxInclusive value="999999"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Data">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">This is generic data for the type of location</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:minLength value="1"/>
+									<xs:maxLength value="50"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Description">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Description of the location</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:minLength value="1"/>
+									<xs:maxLength value="160"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>						
+                        			                            <xs:element minOccurs="0" name="Triggered">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Location that triggered a sending of Location_Data</xs:documentation>
+								
+							</xs:annotation>                        			                            
+                        			                            </xs:element>
+                        
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaLocationRequest">
+		<xs:sequence/>
+	</xs:complexType>
+	<xs:complexType name="oaLocationResponse">
+		<xs:sequence>
+			<xs:element name="Location_Data" type="oaLocationInfo"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaAvailabilityRequest">
+		<xs:sequence/>
+	</xs:complexType>
+	<xs:complexType name="oaAvailabilityResponse">
+		<xs:sequence>
+			<xs:element name="Code">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Availability status code for the portable device</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="present"/>
+						<xs:enumeration value="generalAbsent"/>
+						<xs:enumeration value="doNotDisturb"/>
+						<xs:enumeration value="manualAbsent"/>
+						<xs:enumeration value="inMeeting"/>
+						<xs:enumeration value="inStorageRack"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Storage_Address" type="elemUniteAddress">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The Unite address of the position in the Storage/Charging rack</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaAvailabilityInfo">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="unbounded" name="Status">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Group of elements containing availability status information for a device</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Address" type="elemUniteAddress">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Address of the portable device that has reported absence</xs:documentation>
+								
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="Code">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Availability status code for the portable device</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="present"/>
+									<xs:enumeration value="generalAbsent"/>
+									<xs:enumeration value="doNotDisturb"/>
+									<xs:enumeration value="manualAbsent"/>
+									<xs:enumeration value="inMeeting"/>
+									<xs:enumeration value="inStorageRack"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Storage_Address" type="elemUniteAddress">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The Unite address of the position in the Storage/Charging rack</xs:documentation>
+								
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaMessageDeletion">
+		<xs:sequence>
+                        <xs:element name="Priority" type="elemPagingPrio" minOccurs="0">
+                        </xs:element>
+            
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaMessage">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Subject">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The subject of the message</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="1000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Body">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The body of the message</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="5000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Indication">
+				<xs:annotation>
+					<xs:documentation>The indication element  brings together a group of elements defining how to indicate the message for a user.</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element minOccurs="0" name="Beep">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Beep characteristics</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="0"/>
+									<xs:maxInclusive value="99"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Intensity">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines the intensity of the indication</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="Normal"/>
+									<xs:enumeration value="None"/>
+									<xs:enumeration value="Silent"/>
+									<xs:enumeration value="Low"/>
+									<xs:enumeration value="Medium"/>
+									<xs:enumeration value="High"/>
+									<xs:enumeration value="Max"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Urgent">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The message is defined as urgent and will break through silent mode</xs:documentation>
+								
+							</xs:annotation>
+						</xs:element>
+						<xs:element minOccurs="0" name="Colour">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines the colour of the indication</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="Red"/>
+									<xs:enumeration value="Green"/>
+									<xs:enumeration value="Blue"/>
+									<xs:enumeration value="Yellow"/>
+									<xs:enumeration value="Orange"/>
+									<xs:enumeration value="Cyan"/>
+									<xs:enumeration value="Purple"/>
+									<xs:enumeration value="Brown"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Repetition">
+							<xs:annotation>
+								<xs:documentation>The Repetition element  brings together a group of elements defining repetition of indication (Beep) for the device</xs:documentation>
+								
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Interval_time">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Interval time for repetition of indication</xs:documentation>
+											
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:integer">
+												<xs:minInclusive value="1"/>
+												<xs:maxInclusive value="999"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:element>
+									<xs:element name="Number_of_repetitions">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Number of repetitions of indications with the interval time as set byInterval_time</xs:documentation>
+											
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:integer">
+												<xs:minInclusive value="1"/>
+												<xs:maxInclusive value="999"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element minOccurs="0" name="TTL">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">This is the total time the paging is valid in seconds after it has arrived to the device</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:integer">
+						<xs:minInclusive value="1"/>
+						<xs:maxInclusive value="999999"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Priority" type="elemPagingPrio">
+			</xs:element>
+			<xs:element minOccurs="0" name="Tag">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">A text that categorises the sent block</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="25"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaPagingConfirmation">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Remove_reject_option">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The Reject option will not be available for this message.</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Message" type="oaMessage"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaPagingConfirmationResponse">
+		<xs:sequence>
+			<xs:element name="Status">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The answer from the device the confirmation was requested from</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="accepted"/>
+						<xs:enumeration value="rejected"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Priority" type="elemPagingPrio"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="elemUniteAddress">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="255"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="elemStickyMode">
+		<xs:annotation>
+			<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines if one option has to be selected before leaving the message</xs:documentation>
+			
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="reset"/>
+			<xs:enumeration value="mode1"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="elemIMoptID">
+		<xs:restriction base="xs:integer">
+			<xs:minInclusive value="1"/>
+			<xs:maxInclusive value="99"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="elemIMDataResp">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="255"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="elemPagingPrio">
+		<xs:annotation>
+			<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Message priority</xs:documentation>
+			
+		</xs:annotation>
+		<xs:restriction base="xs:integer">
+			<xs:minInclusive value="1"/>
+			<xs:maxInclusive value="9"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="oaInteractiveMessage">
+		<xs:sequence>
+			<xs:element name="Message" type="oaMessage"/>
+			<xs:element minOccurs="0" name="Update">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Update previous sent IM</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element minOccurs="0" name="Method">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how the message update shall be handled</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="onlyIfNoExist"/>
+									<xs:enumeration value="onlyExisting"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Request_status">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines the request for status</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="onlyOnFail"/>
+									<xs:enumeration value="none"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Reminder">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The reminder group contains elements relevant to request of user attention</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element minOccurs="0" name="Attention">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines the interval between indications for the message</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="1"/>
+									<xs:maxInclusive value="255"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Session">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how long time after an option in the message has been selected until the message is deleted</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="1"/>
+									<xs:maxInclusive value="255"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element minOccurs="0" name="Sticky_mode" type="elemStickyMode">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines sticky mode for the message</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="Option">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The option group contains elements relevant to user response selection</xs:documentation>
+					
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence minOccurs="0">
+						<xs:element minOccurs="0" name="ID" type="elemIMoptID">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Identification number for the option</xs:documentation>
+								
+							</xs:annotation>
+						</xs:element>
+						<xs:element minOccurs="0" name="List_order">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Order number in list of options</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="1"/>
+									<xs:maxInclusive value="99"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Display_layer">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Number identifying which layer the option belongs to</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:integer">
+									<xs:minInclusive value="1"/>
+									<xs:maxInclusive value="99"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Text">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The text that indicates the option in the portable device</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:maxLength value="100"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Function_key_ID">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Function key for option</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:maxLength value="2"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="Call_request_number">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Number identifying which layer the option belongs to</xs:documentation>
+								
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:maxLength value="32"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element minOccurs="0" name="On_selection">
+							<xs:annotation>
+								<xs:documentation xmlns="http://www.w3.org/1999/xhtml">This is a subgroup to Option</xs:documentation>
+								
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element minOccurs="0" name="Data_response" type="elemIMDataResp">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Data response</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="User_response">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">This is a subgroup to On_selection</xs:documentation>
+											
+										</xs:annotation>
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element minOccurs="0" name="Data_type">
+													<xs:annotation>
+														<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Expected type of data in response</xs:documentation>
+														
+													</xs:annotation>
+													<xs:simpleType>
+														<xs:restriction base="xs:string">
+															<xs:enumeration value="numeric"/>
+															<xs:enumeration value="alphanum"/>
+														</xs:restriction>
+													</xs:simpleType>
+												</xs:element>
+												<xs:element name="Text_label">
+													<xs:annotation>
+														<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Text prompt i.e. predefined text displayed when data shall be entered</xs:documentation>
+														
+													</xs:annotation>
+													<xs:simpleType>
+														<xs:restriction base="xs:string">
+															<xs:minLength value="1"/>
+															<xs:maxLength value="255"/>
+														</xs:restriction>
+													</xs:simpleType>
+												</xs:element>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+									<xs:element minOccurs="0" name="Call_number">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">This is a subgroup to On_selection</xs:documentation>
+											
+										</xs:annotation>
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element minOccurs="0" name="Method">
+													<xs:annotation>
+														<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines which method to use for the call</xs:documentation>
+														
+													</xs:annotation>
+													<xs:simpleType>
+														<xs:restriction base="xs:string">
+															<xs:enumeration value="first"/>
+															<xs:enumeration value="once"/>
+															<xs:enumeration value="more"/>
+															<xs:enumeration value="last"/>
+														</xs:restriction>
+													</xs:simpleType>
+												</xs:element>
+												<xs:element minOccurs="0" name="Microphone_mode">
+													<xs:annotation>
+														<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how the microphone shall operate during the call</xs:documentation>
+														
+													</xs:annotation>
+													<xs:simpleType>
+														<xs:restriction base="xs:string">
+															<xs:enumeration value="PTT"/>
+															<xs:enumeration value="micOn"/>
+														</xs:restriction>
+													</xs:simpleType>
+												</xs:element>
+												<xs:element name="Digits">
+													<xs:annotation>
+														<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines the call number to be dialled</xs:documentation>
+														
+													</xs:annotation>
+													<xs:simpleType>
+														<xs:restriction base="xs:string">
+															<xs:minLength value="1"/>
+															<xs:maxLength value="32"/>
+														</xs:restriction>
+													</xs:simpleType>
+												</xs:element>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+									<xs:element minOccurs="0" name="Call_disconnect_data" type="elemIMDataResp">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Send a response when the call is disconnected</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="New_time_to_live">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Update time to live</xs:documentation>
+											
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:integer">
+												<xs:minInclusive value="1"/>
+												<xs:maxInclusive value="999999"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:element>
+									<xs:element minOccurs="0" name="New_priority">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Change message priority</xs:documentation>
+											
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:integer">
+												<xs:minInclusive value="1"/>
+												<xs:maxInclusive value="9"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:element>
+									<xs:element minOccurs="0" name="Show_next_layer">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Show next layer of options on selection</xs:documentation>
+											
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:integer">
+												<xs:minInclusive value="1"/>
+												<xs:maxInclusive value="99"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:element>
+									<xs:element minOccurs="0" name="Sticky_mode" type="elemStickyMode">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines sticky mode for the message</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Close_message">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Close the currently displayed message</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Erase_message">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Erase the message on selection</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Erase_option" type="elemIMoptID">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Erase an option of the interactive message on selection</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Disable_option">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Disable the option after selection</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Enable_option" type="elemIMoptID">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Enable disabled option(s) on selection</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Mark_option">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The option will be marked after selection</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Unmark_option" type="elemIMoptID">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Unmark previously marked option(s) on selection</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Data_response_address" type="elemUniteAddress">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Specifies the Unite address that should be used for data response</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Call_request">
+										<xs:annotation>
+											<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Requests number from system to use for call connections</xs:documentation>
+											
+										</xs:annotation>
+									</xs:element>
+									<xs:element minOccurs="0" name="Disconnect_call"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="oaInteractiveMessageResponse">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="Data_response" type="elemIMDataResp">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Predefined data that is sent as a response on selection</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="User_response" type="elemIMDataResp">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">The data manually entered by the user after selecting an IM option</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="Priority" type="elemPagingPrio">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Message priority</xs:documentation>
+					
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="Update_status">
+				<xs:annotation>
+					<xs:documentation xmlns="http://www.w3.org/1999/xhtml">Defines how the update of an IM was carried through</xs:documentation>
+					
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="failed"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>
