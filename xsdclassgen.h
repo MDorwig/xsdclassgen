@@ -8,23 +8,14 @@ class xsdChoice;
 class xsdGroup;
 class xsdSequence;
 class xsdAttribute;
+class xsdTypeList;
+class xsdAttrList;
+class xsdGroupList;
 
 typedef std::list<xsdType*>::iterator typeIterator;
 
-typedef std::list<xsdElement*> xsdElementList ;
-typedef xsdElementList::iterator elementIterator ;
-
 typedef std::list<xsdChoice*> xsdChoiceList ;
 typedef xsdChoiceList::iterator choiceIterator ;
-
-typedef std::list<xsdGroup*> xsdGroupList ;
-typedef xsdGroupList::iterator groupIterator ;
-
-typedef std::list<xsdSequence*> xsdSequenceList ;
-typedef xsdSequenceList::iterator sequenceIterator ;
-
-typedef std::list<xsdAttribute*> xsdAttrList ;
-typedef xsdAttrList::iterator attrIterator ;
 
 std::string MakeIdentifier(const char * prefix,const char * name)
 {
@@ -48,6 +39,7 @@ std::string MakeIdentifier(const char * prefix,const char * name)
 	}
 	return str ;
 }
+
 
 class xsdTypename // für vorwärtsdeclarationen
 {
@@ -82,7 +74,7 @@ public:
 class xsdElement
 {
 public:
-	xsdElement(const char * name,xsdTypename * typname,xsdType * type)
+	xsdElement(const char * name,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs)
 	{
 		if (strchr(name,':') != NULL)
 		{
@@ -94,8 +86,8 @@ public:
 		m_cname      = MakeIdentifier("m_",name);
 		m_typename   = typname;
 		m_type       = type ;
-		m_minOccurs  = 0;
-		m_maxOccurs  = 0;
+		m_minOccurs  = minOccurs;
+		m_maxOccurs  = maxOccurs;
 	}
 
 	~xsdElement()
@@ -112,7 +104,9 @@ public:
 		return m_cname.c_str();
 	}
 
-	void GenCode(FILE * out,int indent);
+	void CalcDependency(xsdTypeList & list);
+
+	void GenCode(FILE * out,int indent,bool choice);
 
 	std::string m_ns;
 	std::string m_name ;
@@ -122,7 +116,6 @@ public:
 	int         m_minOccurs;
 	int         m_maxOccurs;
 };
-
 
 
 class xsdEnumValue
@@ -157,6 +150,8 @@ enum typetag
 	type_double,
 	type_duration,
 	type_dateTime,
+	type_extension,
+	type_simpleContent,
 	type_time,
 	type_date,
 	type_gYearMonth,
@@ -201,6 +196,7 @@ enum typetag
 	type_simple,
 	type_restriction,
 	type_sequence,
+	type_list,
 	type_group,
 	type_choice,
 	type_all,
@@ -216,14 +212,42 @@ public:
 	xsdType * Find(const char * name);
 };
 
+class xsdElementList : public std::list<xsdElement*>
+{
+public:
+	void CalcDependency(xsdTypeList & list);
+	void GenCode(FILE * out,int indent,bool choice);
+};
+
+typedef xsdElementList::iterator elementIterator ;
+
+
 class xsdAttribute
 {
 public:
-	xsdAttribute() {}
+	xsdAttribute(const char * name,const char * defval,xsdType * type)
+	{
+		m_name    = name ;
+		m_cname   = MakeIdentifier("a_",name);
+		m_type    = type;
+		m_default = defval;
+	}
 	std::string m_name ;
+	std::string m_cname;
 	xsdType * m_type ;
 	std::string m_default;
+	void CalcDependency(xsdTypeList & list);
+	void GenCode(FILE * out,int indent);
 };
+
+class xsdAttrList : public std::list<xsdAttribute*>
+{
+public:
+	void GenCode(FILE * out,int indent);
+};
+
+typedef xsdAttrList::iterator attrIterator ;
+
 
 class xsdType
 {
@@ -250,6 +274,10 @@ public:
 	{
 	}
 
+	virtual void CalcDependency(xsdTypeList & list)
+	{
+	}
+
 	const char * getName()
 	{
 		return m_name.c_str();
@@ -262,6 +290,7 @@ public:
 		return *getName() == 0 ;
 	}
 	virtual void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
+	virtual void GenCode(FILE * out,int indent);
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
@@ -270,6 +299,24 @@ public:
 	bool    m_impl;
 	bool    m_indeplist;
 	static int m_count;
+};
+
+class xsdList : public xsdType
+{
+public:
+	xsdList(const char * itemTypename,xsdType * type) : xsdType("",type_list)
+	{
+		m_typename = NULL;
+		if (itemTypename != NULL)
+			m_typename = new xsdTypename(itemTypename);
+		m_type = type ;
+	}
+	void CalcDependency(xsdTypeList & list);
+	xsdTypename * m_typename ;
+	xsdType     * m_type ;
+
+	void GenCode(FILE * out,int indent,const char * elemname,const char * simplename);
+
 };
 
 class xsdRestriction: public xsdType
@@ -289,6 +336,7 @@ public:
 		m_whiteSpace = 0 ;
 		m_base = NULL;
 	}
+	void CalcDependency(xsdTypeList & list);
 	void GenCode(FILE * out,int indent,const char * elemname,const char * simplename);
 
 	xsdType * m_base ;
@@ -305,18 +353,43 @@ public:
 	int m_whiteSpace;
 };
 
+class xsdExtension : public xsdType
+{
+public:
+	xsdExtension(xsdTypename * basetypename) : xsdType("",type_extension)
+	{
+		m_basetypename = basetypename;
+	}
+	void CalcDependency(xsdTypeList & list);
+	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
+//	void GenCode(FILE * out,int indent);
+
+	xsdTypename * m_basetypename ;
+	xsdAttrList   m_attributes;
+};
+
+class xsdSimpleContent : public xsdType
+{
+public:
+	xsdSimpleContent() : xsdType("",type_simpleContent)
+	{
+		m_content = NULL;
+	}
+	void CalcDependency(xsdTypeList & list);
+	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
+	xsdType * m_content; // xsd_Restriction oder xsd_Extension
+};
+
 class xsdSimpleType : public xsdType
 {
 public:
 	xsdSimpleType(const char * name) : xsdType(name,type_simple)
 	{
-		m_rest = NULL;
+		m_derived = NULL;
 	}
+	void CalcDependency(xsdTypeList & list);
 	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
-	union
-	{
-		xsdRestriction * m_rest;
-	};
+	xsdType * m_derived;
 };
 
 class xsdSequence : public xsdType
@@ -326,19 +399,64 @@ public:
 	{
 
 	}
+
+	void CalcDependency(xsdTypeList & list);
+
 	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
+	void GenCode(FILE * out,int indent);
 	xsdElementList m_list ;
 };
+
+class xsdGroup : public xsdType
+{
+public:
+	xsdGroup(const char * name) : xsdType(name,type_group)
+	{
+		m_type = NULL;
+	}
+
+	void CalcDependency(xsdTypeList & list);
+	void GenCode(FILE * out,int indent, const char * elemname,const char * supertypename);
+	void GenCode(FILE * out,int indent);
+
+	xsdType * m_type ;
+};
+
+class xsdGroupList : public std::list<xsdGroup*>
+{
+public:
+	void CalcDependency(xsdTypeList & list);
+	void GenCode(FILE * out,int indent, const char * elemname,const char * supertypename);
+	void GenCode(FILE * out,int indent);
+};
+
+typedef xsdGroupList::iterator groupIterator ;
+
+
+
+class xsdSequenceList : public std::list<xsdSequence*>
+{
+public:
+	void CalcDependency(xsdTypeList & list);
+};
+
+typedef xsdSequenceList::iterator sequenceIterator ;
 
 class xsdChoice : public xsdType
 {
 public:
-	xsdChoice() : xsdType("",type_choice)
+	xsdChoice(int min,int max) : xsdType("",type_choice)
 	{
-
+		m_minOccurs = min ;
+		m_maxOccurs = max ;
 	}
 
+	void CalcDependency(xsdTypeList & list);
+
 	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
+	void GenCode(FILE * out,int indent);
+	int            m_minOccurs;
+	int            m_maxOccurs;
 	xsdElementList m_elements;
 	xsdGroupList   m_groups;
 	xsdChoiceList  m_choises;
@@ -353,7 +471,9 @@ public:
 
 	}
 
+	void CalcDependency(xsdTypeList & list);
 	void GenCode(FILE * out,int indent, const char * elemname,const char * supertypename);
+	void GenCode(FILE * out,int indent);
 
 	xsdElementList m_elements ;
 };
@@ -365,6 +485,9 @@ public:
 	{
 		m_type = NULL;
 	}
+
+	void CalcDependency(xsdTypeList & list);
+
 	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
 	xsdType * m_type;
 	xsdAttrList m_attributes;
