@@ -213,6 +213,8 @@ public:
 	}
 
 	xsdType * Find(const char * name);
+	void CalcDependency(xsdTypeList & list);
+	void GenCode(FILE * out,int indent,bool choice);
 };
 
 class xsdElementList : public std::list<xsdElement*>
@@ -287,6 +289,23 @@ public:
 	}
 
 	const char * getCppName() ;
+
+	/*
+	 * erzeugt einen namen für struct <name> oder enum <name>
+	 * entweder aus dem supertypename oder <prefix><elemname>
+	 */
+	std::string MakeTag(const char * prefix,const char * elemname,const char * supertypeename)
+	{
+		std::string s = supertypeename;
+		if (s.empty())
+		{
+			if (strncmp(elemname,"m_",2) == 0)
+				elemname+=2 ;
+			s = prefix;
+			s += elemname;
+		}
+		return s ;
+	}
 
 	bool isAnonym()
 	{
@@ -407,7 +426,8 @@ public:
 
 	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
 	void GenCode(FILE * out,int indent);
-	xsdElementList m_list ;
+	xsdElementList m_elements ;
+	xsdTypeList    m_types ;
 };
 
 class xsdGroup : public xsdType
