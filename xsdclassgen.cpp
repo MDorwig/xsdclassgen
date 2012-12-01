@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
+#include <sys/stat.h>
 #include <libxml2/libxml/parser.h>
 #include "xsdclassgen.h"
 
@@ -315,6 +315,11 @@ xsdElement * FindElement(const char * name)
 
 void AddElement(xsdElement * elem)
 {
+	if (targetNamespace == NULL)
+	{
+			printf("no targetNamespace\n");
+			targetNamespace = AddNamespace("","");
+	}
 	xsdNamespace * ns = targetNamespace;
 	if (!elem->m_ns.empty())
 		ns = FindNamespace(elem->m_ns.c_str());
@@ -341,6 +346,7 @@ xsdRestriction * ParseRestriction(xmlNodePtr rest);
 xsdComplexType * ParseComplexType(xmlNodePtr type);
 xsdSimpleType  * ParseSimpleType(xmlNodePtr type);
 xsdChoice      * ParseChoice(xmlNodePtr choice);
+xsdGroup  		 * ParseGroup(xmlNodePtr group);
 
 xsdAttribute   * ParseAttribute(xmlNodePtr node)
 {
@@ -456,9 +462,18 @@ xsdSequence * ParseSequence(xmlNodePtr sequence)
 			switch(kw)
 			{
 				case	xsd_element:
-					xmlseq->m_list.push_back(ParseElement(child));
+					xmlseq->m_elements.push_back(ParseElement(child));
+				break ;
+				case	xsd_group:
+					xmlseq->m_types.push_back(ParseGroup(child));
 				break ;
 
+				case	xsd_choice:
+					xmlseq->m_types.push_back(ParseChoice(child));
+				break ;
+				case  xsd_sequence:
+					xmlseq->m_types.push_back(ParseSequence(child));
+				break ;
 				default:
 					not_supported_error(child,sequence);
 				break ;
@@ -1087,24 +1102,42 @@ const char * xsdType::getCppName()
 		case	type_long:    			name = "long";					break ;
 		case	type_boolean:				name = "bool";					break ;
 		case  type_string:        name = "char";   				break ;
+		case	type_integer:       name = "int";						break ;
 		default:               		name = m_cname.c_str();	break ;
 	}
 	return name ;
+}
+
+void xsdTypeList::CalcDependency(xsdTypeList & list)
+{
+	for (typeIterator ti = begin() ; ti != end() ; ti++)
+	{
+		(*ti)->CalcDependency(list);
+	}
+}
+
+void xsdTypeList::GenCode(FILE * out,int indent,bool choice)
+{
+	for (typeIterator ti = begin() ; ti != end() ; ti++)
+	{
+		(*ti)->GenCode(out,indent);
+	}
 }
 
 void xsdRestriction::GenCode(FILE * out,int indent,const char * elemname,const char * simplename)
 {
 	if (!m_enumvalues.empty())
 	{
+		std::string enumname = MakeTag("e",elemname,simplename);
 		Indent(out,indent);
-		fprintf(out,"enum %s\n",simplename);
+		fprintf(out,"enum %s\n",enumname.c_str());
 		Indent(out,indent);
 		fprintf(out,"{\n");
 		std::list<xsdEnumValue*>::iterator si ;
 		for (si = m_enumvalues.begin() ; si != m_enumvalues.end() ; si++)
 		{
 			Indent(out,indent+1);
-			fprintf(out,"%s_%s,\n",simplename,(*si)->getCppName());
+			fprintf(out,"%s_%s,\n",enumname.c_str(),(*si)->getCppName());
 		}
 		Indent(out,indent);
 		fprintf(out,"} %s ;\n",elemname);
@@ -1164,9 +1197,11 @@ void xsdSimpleType::GenCode(FILE * out,int indent,const char * elemname,const ch
 
 void xsdSequence::GenCode(FILE * out,int indent,const char * elemname,const char * supertypename)
 {
+	std::string tag ;
 	std::list<xsdElement*>::iterator ei;
+	tag = MakeTag("s",elemname,supertypename);
 	Indent(out,indent);
-	fprintf(out,"struct %s\n",supertypename);
+	fprintf(out,"struct %s\n",tag.c_str());
 	Indent(out,indent);
 	fprintf(out,"{\n");
 	indent++;
@@ -1178,14 +1213,16 @@ void xsdSequence::GenCode(FILE * out,int indent,const char * elemname,const char
 
 void xsdSequence::GenCode(FILE * out,int indent)
 {
-	m_list.GenCode(out,indent,false);
+	m_elements.GenCode(out,indent,false);
+	m_types.GenCode(out,indent,false);
 }
 
 void xsdAll::GenCode(FILE * out,int indent,const char * elemname,const char * supertypename)
 {
 	std::list<xsdElement*>::iterator ei;
+	std::string tag = MakeTag("s",elemname,supertypename);
 	Indent(out,indent);
-	fprintf(out,"struct %s\n",supertypename);
+	fprintf(out,"struct %s\n",tag.c_str());
 	Indent(out,indent);
 	fprintf(out,"{\n");
 	indent++;
@@ -1202,8 +1239,9 @@ void xsdAll::GenCode(FILE * out,int indent)
 
 void xsdExtension::GenCode(FILE *out,int indent,const char * elemname,const char * supertypename)
 {
+	std::string tag = MakeTag("s",elemname,supertypename);
 	Indent(out,indent);
-	fprintf(out,"struct %s\n",supertypename);
+	fprintf(out,"struct %s\n",tag.c_str());
 	Indent(out,indent);
 	fprintf(out,"{\n");
 	for (xsdAttrList::iterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
@@ -1253,7 +1291,7 @@ void xsdComplexType::GenCode(FILE * out,int indent,const char * elemname,const c
 		if (!m_attributes.empty())
 		{
 			Indent(out,indent);
-			fprintf(out,"struct %s\n",supertypename);
+			fprintf(out,"struct %s\n",MakeTag("s",elemname,supertypename).c_str());
 			Indent(out,indent);
 			fprintf(out,"{\n");
 			for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
@@ -1393,7 +1431,8 @@ void xsdSequenceList::CalcDependency(xsdTypeList & list)
 
 void xsdSequence::CalcDependency(xsdTypeList & list)
 {
-	m_list.CalcDependency(list);
+	m_elements.CalcDependency(list);
+	m_types.CalcDependency(list);
 }
 
 void xsdAll::CalcDependency(xsdTypeList & list)
@@ -1444,6 +1483,11 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 	printf("CalcDependency for %s\n",getName());
 	if (type == NULL)
 	{
+		if (m_typename == NULL)
+		{
+			printf("element \"%s\" has no type\n",getName());
+			m_typename = new xsdTypename("xs:integer");
+		}
 		if (m_typename != NULL)
 		{
 			type = FindType(m_typename);
@@ -1451,10 +1495,6 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 			{
 				printf("element \"%s\": type  \"%s\" not found\n",getName(),m_typename->m_name.c_str());
 			}
-		}
-		else
-		{
-			printf("element \"%s\" has not type\n",getName());
 		}
 	}
 	if (type != NULL)
@@ -1592,6 +1632,7 @@ int main(int argc, char * argv[])
 		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
 		{
 			xsdNamespace * ns = *nsi ;
+			ns->m_types.CalcDependency(deplist);
 			ns->m_elements.CalcDependency(deplist);
 		}
 		for (typeIterator ti = deplist.begin() ; ti != deplist.end() ; ti++)
