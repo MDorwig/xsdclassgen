@@ -72,8 +72,8 @@
   <xs:simpleType      name="enumDAKSVersions">
     <xs:restriction   base="xs:string">
       <xs:enumeration value="1.10"/>
-			<xs:enumeration value="1.11"/>
-			<xs:enumeration value="1.12"/>
+      <xs:enumeration value="1.11"/>
+      <xs:enumeration value="1.12"/>
     </xs:restriction>
   </xs:simpleType>
   
@@ -102,7 +102,7 @@
       <xs:enumeration value="CampOn"/>
       <xs:enumeration value="Intr"/>
       <xs:enumeration value="EmergencyIntr"/>
-			<xs:enumeration value="ForcedRel"/>
+      <xs:enumeration value="ForcedRel"/>
     </xs:restriction>
   </xs:simpleType>
 	
