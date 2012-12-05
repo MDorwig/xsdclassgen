@@ -1,5 +1,9 @@
 
+#ifndef XSDCLASSGEN_H_INCLUDED
+#define XSDCLASSGEN_H_INCLUDED
+
 #include <list>
+#include <string.h>
 #include <string>
 
 class xsdElement;
@@ -11,35 +15,17 @@ class xsdAttribute;
 class xsdTypeList;
 class xsdAttrList;
 class xsdGroupList;
+class xsdSimpleType;
+
+#include "symtab.h"
+#include "cppfile.h"
 
 typedef std::list<xsdType*>::iterator typeIterator;
 
 typedef std::list<xsdChoice*> xsdChoiceList ;
 typedef xsdChoiceList::iterator choiceIterator ;
 
-std::string MakeIdentifier(const char * prefix,const char * name)
-{
-	std::string str ;
-	if (prefix != NULL)
-		str += prefix ;
-	while(*name)
-	{
-		char c = *name++;
-		if (!isalnum(c) && c != '_')
-		{
-			char n[8];
-			if (*name)
-				sprintf(n,"_x%02x_",c);
-			else
-				sprintf(n,"_x%02x",c);
-			str += n ;
-		}
-		else
-			str += c ;
-	}
-	return str ;
-}
-
+std::string MakeIdentifier(const char * prefix,const char * name);
 
 class xsdTypename // für vorwärtsdeclarationen
 {
@@ -109,8 +95,8 @@ public:
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenCode(FILE * out,int indent,bool choice);
-
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
@@ -142,6 +128,9 @@ public:
 	std::string m_Value ;
 	std::string m_cname;
 };
+
+typedef std::list<xsdEnumValue *> xsdEnumValueList;
+typedef xsdEnumValueList::iterator enumIterator;
 
 enum typetag
 {
@@ -186,6 +175,7 @@ enum typetag
 	type_int,
 	type_short,
 	type_byte,
+	type_enum,
 	type_nonNegativeInteger,
 	type_unsignedLong,
 	type_unsignedInt,
@@ -200,6 +190,7 @@ enum typetag
 	type_restriction,
 	type_sequence,
 	type_list,
+	type_union,
 	type_group,
 	type_choice,
 	type_all,
@@ -214,14 +205,14 @@ public:
 
 	xsdType * Find(const char * name);
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent,bool choice);
+	void GenHeader(CppFile & out,int indent,bool choice);
 };
 
 class xsdElementList : public std::list<xsdElement*>
 {
 public:
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent,bool choice);
+	void GenHeader(CppFile & out,int indent);
 };
 
 typedef xsdElementList::iterator elementIterator ;
@@ -230,25 +221,37 @@ typedef xsdElementList::iterator elementIterator ;
 class xsdAttribute
 {
 public:
-	xsdAttribute(const char * name,const char * defval,xsdType * type)
+	enum eUse
+	{
+		eUse_Optional,
+		eUse_Prohibited,
+		eUse_Required,
+	};
+
+	xsdAttribute(const char * name,const char * defval,const char * fixed,eUse use,xsdType * type)
 	{
 		m_name    = name ;
 		m_cname   = MakeIdentifier("a_",name);
 		m_type    = type;
 		m_default = defval;
+		m_fixed   = fixed;
 	}
 	std::string m_name ;
 	std::string m_cname;
 	xsdType * m_type ;
 	std::string m_default;
+	std::string m_fixed;
+	eUse        m_use ;
+	const char * getName() { return m_name.c_str();}
+	const char * getCppName() { return m_cname.c_str();}
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
 };
 
 class xsdAttrList : public std::list<xsdAttribute*>
 {
 public:
-	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
 };
 
 typedef xsdAttrList::iterator attrIterator ;
@@ -257,18 +260,24 @@ typedef xsdAttrList::iterator attrIterator ;
 class xsdType
 {
 public:
-	xsdType(const char * name,typetag tag,bool builtin = false)
+	xsdType(const char * name,typetag tag,xsdType * parent,bool builtin = false)
 	{
 		if (name == NULL)
 			name = "";
-		if (strchr(name,':') != NULL)
+		if (name[0] == 0)
+			m_local = true ;
+		else
 		{
-			while(*name != ':')
-				m_ns += *name++;
-			name++;
+			if (strchr(name,':') != NULL)
+			{
+				while(*name != ':')
+					m_ns += *name++;
+				name++;
+			}
+			m_name = name;
+			m_cname = MakeIdentifier(NULL,name);
 		}
-		m_name = name;
-		m_cname = MakeIdentifier(NULL,name);
+		m_parent=parent;
 		m_tag = tag ;
 		m_id = ++m_count;
 		m_impl = builtin ;
@@ -296,37 +305,65 @@ public:
 	 */
 	std::string MakeTag(const char * prefix,const char * elemname,const char * supertypeename)
 	{
-		std::string s = supertypeename;
-		if (s.empty())
+		std::string s = prefix ;
+		if (*supertypeename == 0)
 		{
 			if (strncmp(elemname,"m_",2) == 0)
 				elemname+=2 ;
-			s = prefix;
 			s += elemname;
 		}
+		else
+		  s += supertypeename;
 		return s ;
 	}
 
-	bool isAnonym()
+	bool isLocal()
 	{
-		return *getName() == 0 ;
+		return m_local ;
 	}
-	virtual void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
-	virtual void GenCode(FILE * out,int indent);
+	virtual void GenHeader(CppFile & out,int indent,const char * elemname);
+	virtual void GenHeader(CppFile & out,int indent);
+	virtual void GenImpl(CppFile & out,Symtab & st);
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
-	typetag m_tag;
-	int     m_id ;
-	bool    m_impl;
-	bool    m_indeplist;
-	static int m_count;
+	xsdType *   m_parent;
+	bool        m_local;
+	typetag 		m_tag;
+	int     		m_id ;
+	bool    		m_impl;
+	bool    		m_indeplist;
+	static int 	m_count;
 };
+
+class xsdEnum : public xsdType
+{
+public:
+	xsdEnum(xsdType * parent) : xsdType("",type_enum,parent)
+	{
+		const char * simplename = parent->getCppName();
+		m_structname = simplename;
+		m_enumname   = "e_" ;
+		m_enumname  += simplename;
+	}
+
+	void AddValue(xsdEnumValue * val)
+	{
+		m_values.push_back(val);
+	}
+
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
+	xsdEnumValueList m_values;
+	std::string m_enumname;
+	std::string m_structname;
+};
+
 
 class xsdList : public xsdType
 {
 public:
-	xsdList(const char * itemTypename,xsdType * type) : xsdType("",type_list)
+	xsdList(const char * itemTypename,xsdType * type,xsdType * parent) : xsdType("",type_list,parent)
 	{
 		m_typename = NULL;
 		if (itemTypename != NULL)
@@ -337,14 +374,27 @@ public:
 	xsdTypename * m_typename ;
 	xsdType     * m_type ;
 
-	void GenCode(FILE * out,int indent,const char * elemname,const char * simplename);
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
 
+
+};
+
+class xsdUnion: public xsdType
+{
+public:
+	xsdUnion(const char * memberTypes,xsdType * parent) : xsdType("",type_union,parent)
+	{
+
+	}
+	std::list<xsdTypename*> m_memberTypes;
+	xsdTypeList m_types ;
 };
 
 class xsdRestriction: public xsdType
 {
 public:
-	xsdRestriction() : xsdType("",type_restriction)
+	xsdRestriction(xsdType * parent) : xsdType("",type_restriction,parent)
 	{
 		m_minExclusive = 0 ;
 		m_minInclusive = 0 ;
@@ -354,14 +404,20 @@ public:
 		m_fractionDigits = 0 ;
 		m_length = 0 ;
 		m_minLength = 0 ;
-		m_maxLength = 0 ;
+		m_maxLength = 1 ;
 		m_whiteSpace = 0 ;
 		m_base = NULL;
+		m_simple = NULL;
+		m_enum = NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent,const char * elemname,const char * simplename);
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
 
-	xsdType * m_base ;
+
+	xsdType       * m_base ;
+	xsdEnum       * m_enum;
+	xsdSimpleType * m_simple;
 	int m_minExclusive;
 	int m_minInclusive;
 	int m_maxExclusive;
@@ -371,20 +427,21 @@ public:
 	int m_length;
 	int m_minLength;
 	int m_maxLength;
-	std::list<xsdEnumValue*> m_enumvalues;
 	int m_whiteSpace;
 };
 
 class xsdExtension : public xsdType
 {
 public:
-	xsdExtension(xsdTypename * basetypename) : xsdType("",type_extension)
+	xsdExtension(xsdTypename * basetypename,xsdType * parent) : xsdType("",type_extension,parent)
 	{
 		m_basetypename = basetypename;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
-//	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
+//	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
+
 
 	xsdTypename * m_basetypename ;
 	xsdAttrList   m_attributes;
@@ -393,54 +450,74 @@ public:
 class xsdSimpleContent : public xsdType
 {
 public:
-	xsdSimpleContent() : xsdType("",type_simpleContent)
+	xsdSimpleContent(xsdType * parent) : xsdType("",type_simpleContent,parent)
 	{
 		m_content = NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
+
 	xsdType * m_content; // xsd_Restriction oder xsd_Extension
 };
 
 class xsdSimpleType : public xsdType
 {
 public:
-	xsdSimpleType(const char * name) : xsdType(name,type_simple)
+	xsdSimpleType(const char * name,const char * elemname,xsdType * parent) : xsdType(name,type_simple,parent)
 	{
-		m_derived = NULL;
+		if (m_name.empty() && *elemname != 0)
+		{
+			/*
+			 * simpleType ohne namen aber mit zugehörigem element
+			 * es wird ein typname in der form "<elemname>_t" erzeugt
+			 */
+			m_name = elemname;
+			m_name += "_t";
+			m_cname = MakeIdentifier("",m_name.c_str());
+			m_local= true;
+		}
+		m_rest = NULL;
+		m_list = NULL;
+		m_union= NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
-	xsdType * m_derived;
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
+	xsdRestriction * m_rest;
+	xsdList        * m_list;
+	xsdUnion       * m_union;
 };
 
 class xsdSequence : public xsdType
 {
 public:
-	xsdSequence() : xsdType("",type_sequence)
+	xsdSequence(xsdType * parent) : xsdType("",type_sequence,parent)
 	{
 
 	}
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
-	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
+
 	xsdElementList m_elements ;
 	xsdTypeList    m_types ;
+	std::string    m_structname;
 };
 
 class xsdGroup : public xsdType
 {
 public:
-	xsdGroup(const char * name) : xsdType(name,type_group)
+	xsdGroup(const char * name,xsdType * parent) : xsdType(name,type_group,parent)
 	{
 		m_type = NULL;
 	}
 
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent, const char * elemname,const char * supertypename);
-	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
 
 	xsdType * m_type ;
 };
@@ -449,8 +526,7 @@ class xsdGroupList : public std::list<xsdGroup*>
 {
 public:
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent, const char * elemname,const char * supertypename);
-	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
 };
 
 typedef xsdGroupList::iterator groupIterator ;
@@ -468,7 +544,7 @@ typedef xsdSequenceList::iterator sequenceIterator ;
 class xsdChoice : public xsdType
 {
 public:
-	xsdChoice(int min,int max) : xsdType("",type_choice)
+	xsdChoice(int min,int max,xsdType * parent) : xsdType("",type_choice,parent)
 	{
 		m_minOccurs = min ;
 		m_maxOccurs = max ;
@@ -476,8 +552,9 @@ public:
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
-	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
+
 	int            m_minOccurs;
 	int            m_maxOccurs;
 	xsdElementList m_elements;
@@ -489,14 +566,14 @@ public:
 class xsdAll : public xsdType
 {
 public:
-	xsdAll() : xsdType("",type_all)
+	xsdAll(xsdType * parent) : xsdType("",type_all,parent)
 	{
 
 	}
 
 	void CalcDependency(xsdTypeList & list);
-	void GenCode(FILE * out,int indent, const char * elemname,const char * supertypename);
-	void GenCode(FILE * out,int indent);
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
 
 	xsdElementList m_elements ;
 };
@@ -504,15 +581,22 @@ public:
 class xsdComplexType : public xsdType
 {
 public:
-	xsdComplexType(const char * name,typetag tag) : xsdType(name,tag)
+	xsdComplexType(const char * name,const char * elemname,typetag tag,xsdType * parent) : xsdType(name,tag,parent)
 	{
+		if (m_name.empty() && *elemname != 0)
+		{
+			m_name = "c_";
+			m_name += elemname;
+			m_cname = MakeIdentifier("",m_name.c_str());
+		}
 		m_type = NULL;
 	}
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenCode(FILE * out,int indent,const char * elemname,const char * supertypename);
-	xsdType * m_type;
+	void GenHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st);
+	xsdType *   m_type;
 	xsdAttrList m_attributes;
 };
 
@@ -524,3 +608,5 @@ public:
 
 	}
 };
+
+#endif // XSDCLASSGEN_H_INCLUDED
