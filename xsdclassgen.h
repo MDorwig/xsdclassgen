@@ -93,6 +93,12 @@ public:
 		return m_cname.c_str();
 	}
 
+	const char * getIndexVar()
+	{
+		static std::string i = m_cname + "_idx";
+		return i.c_str() ;
+	}
+
 	void CalcDependency(xsdTypeList & list);
 
 	void GenHeader(CppFile & out,int indent);
@@ -292,13 +298,26 @@ public:
 	{
 	}
 
+	virtual bool	isSignedInteger();
+	virtual bool  isUnsignedInteger();
+	virtual bool  isInteger();
+	virtual bool  isfloat();
+	virtual bool  isString();
+	virtual int   getDim() { return 1 ;}
+
 	const char * getName()
 	{
 		return m_name.c_str();
 	}
 
+	virtual void setCppName(const char * name)
+	{
+		m_cname = name ;
+	}
+
 	const char * getCppName() ;
 
+	std::string getQualifiedName();
 	/*
 	 * erzeugt einen namen für struct <name> oder enum <name>
 	 * entweder aus dem supertypename oder <prefix><elemname>
@@ -324,6 +343,8 @@ public:
 	virtual void GenHeader(CppFile & out,int indent,const char * elemname);
 	virtual void GenHeader(CppFile & out,int indent);
 	virtual void GenImpl(CppFile & out,Symtab & st);
+	virtual void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
+
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
@@ -341,10 +362,6 @@ class xsdEnum : public xsdType
 public:
 	xsdEnum(xsdType * parent) : xsdType("",type_enum,parent)
 	{
-		const char * simplename = parent->getCppName();
-		m_structname = simplename;
-		m_enumname   = "e_" ;
-		m_enumname  += simplename;
 	}
 
 	void AddValue(xsdEnumValue * val)
@@ -354,6 +371,13 @@ public:
 
 	void GenHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
+	void setCppName(const char * name)
+	{
+		m_structname = m_cname = name;
+		m_enumname   = "e_" ;
+		m_enumname  += name;
+	}
+
 	xsdEnumValueList m_values;
 	std::string m_enumname;
 	std::string m_structname;
@@ -362,22 +386,31 @@ public:
 
 class xsdList : public xsdType
 {
+/*
+ * <list
+ * id = ID
+ * itemType = QName
+ * {any attributes with non-schema Namespace}...>
+ *	Content: (annotation?, (simpleType?))
+ * </list>
+ */
 public:
 	xsdList(const char * itemTypename,xsdType * type,xsdType * parent) : xsdType("",type_list,parent)
 	{
-		m_typename = NULL;
+		m_itemtypename = NULL;
 		if (itemTypename != NULL)
-			m_typename = new xsdTypename(itemTypename);
-		m_type = type ;
+			m_itemtypename = new xsdTypename(itemTypename);
+		m_itemtype = type ;
 	}
 	void CalcDependency(xsdTypeList & list);
-	xsdTypename * m_typename ;
-	xsdType     * m_type ;
+	xsdTypename * m_itemtypename ;
+	xsdType     * m_itemtype ;
 
 	void GenHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
-
-
+	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
+	void setCppName(const char *name);
+	int  getDim();
 };
 
 class xsdUnion: public xsdType
@@ -413,7 +446,15 @@ public:
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
-
+	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
+	void setCppName(const char * name);
+	bool isInteger() { return getDim() == 1 && m_base->isInteger();}
+	bool isfloat()   { return getDim() == 1 && m_base->isfloat();}
+	bool isString();
+	bool isChar();
+	bool isScalar();
+	int  getDim();
+	const char * getReturnType();
 
 	xsdType       * m_base ;
 	xsdEnum       * m_enum;
@@ -466,7 +507,7 @@ class xsdSimpleType : public xsdType
 public:
 	xsdSimpleType(const char * name,const char * elemname,xsdType * parent) : xsdType(name,type_simple,parent)
 	{
-		if (m_name.empty() && *elemname != 0)
+		if (m_name.empty() && elemname != NULL && *elemname != 0)
 		{
 			/*
 			 * simpleType ohne namen aber mit zugehörigem element
@@ -484,6 +525,9 @@ public:
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
+	void GenAssignment(CppFile & out,int indent,const char * leftside,const char * rightside);
+	int  getDim();
+	void setCppName(const char * name);
 	xsdRestriction * m_rest;
 	xsdList        * m_list;
 	xsdUnion       * m_union;
@@ -608,5 +652,8 @@ public:
 
 	}
 };
+
+xsdType * FindType(const char * name);
+xsdType * FindType(xsdTypename * tn);
 
 #endif // XSDCLASSGEN_H_INCLUDED
