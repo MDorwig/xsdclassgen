@@ -425,6 +425,7 @@ class xsdRestriction: public xsdType
 public:
 	xsdRestriction(xsdType * parent) : xsdType("",type_restriction,parent)
 	{
+		m_cname = "rest_";
 		m_minExclusive = 0 ;
 		m_minInclusive = 0 ;
 		m_maxExclusive = 0 ;
@@ -503,15 +504,25 @@ class xsdSimpleType : public xsdType
 public:
 	xsdSimpleType(const char * name,const char * elemname,xsdType * parent) : xsdType(name,type_simple,parent)
 	{
-		if (m_name.empty() && elemname != NULL && *elemname != 0)
+		if (m_name.empty())
 		{
-			/*
-			 * simpleType ohne namen aber mit zugehörigem element
-			 * es wird ein typname in der form "<elemname>_t" erzeugt
-			 */
-			m_name = elemname;
-			m_name += "_t";
-			m_cname = MakeIdentifier("",m_name.c_str());
+			if (elemname[0] != 0)
+			{
+				/*
+				 * simpleType ohne namen aber mit zugehörigem element
+				 * es wird ein typname in der form "<elemname>_t" erzeugt
+				 */
+				m_name = elemname;
+				m_name += "_t";
+				m_cname = MakeIdentifier("",m_name.c_str());
+			}
+			else
+			{
+				/*
+				 *
+				 */
+				m_cname = "simple_t";
+			}
 			m_local= true;
 		}
 		m_rest = NULL;
