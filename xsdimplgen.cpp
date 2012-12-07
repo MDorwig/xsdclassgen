@@ -178,11 +178,11 @@ void xsdList::GenHeader(CppFile &out,int indent)
 		m_impl = true;
 		if (m_itemtype != NULL)
 		{
-			if (m_itemtype->isLocal())
+/*			if (m_itemtype->isLocal())
 			{
 				m_itemtype->setCppName("value_t");
 			}
-			else
+			else*/
 				m_itemtype->GenHeader(out,indent);
 			out.iprintln(indent,"struct %s",getCppName());
 			out.iprintln(indent,"{");
@@ -345,8 +345,8 @@ void xsdSimpleType::GenAssignment(CppFile & out,int indent,const char * leftside
 
 void xsdSimpleType::setCppName(const char * name)
 {
-	if (m_rest != NULL)
-		m_rest->setCppName(name);
+	//if (m_rest != NULL)
+	//	m_rest->setCppName(name);
 }
 
 void xsdSimpleContent::GenImpl(CppFile & out,Symtab & st)
@@ -622,7 +622,7 @@ void xsdList::GenAssignment(CppFile & out,int indent,const char * dest,const cha
 
 void xsdList::setCppName(const char * name)
 {
-	m_parent->setCppName(name);
+	//m_parent->setCppName(name);
 }
 
 void xsdType::GenImpl(CppFile & out,Symtab & st)

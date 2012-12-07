@@ -372,6 +372,11 @@ void not_allowed_error(xmlNodePtr e,xmlNodePtr n)
 	printf("%s:%d \"%s\" not allowed in \"%s\"\n",e->doc->URL,e->line,e->name,n->name);
 }
 
+void not_allowed_error(xmlAttrPtr a,xmlNodePtr n)
+{
+	printf("%s:%d \"%s\" not allowed in \"%s\"\n",a->doc->URL,a->parent->line,a->name,n->name);
+}
+
 void not_supported_error(xmlNodePtr e,xmlNodePtr n)
 {
 	printf("%s:%d \"%s\" not supported in \"%s\"\n",e->doc->URL,e->line,e->name,n->name);
@@ -1070,7 +1075,10 @@ xsdSimpleType * ParseSimpleType(xmlNodePtr type,const char * elemname,xsdType * 
 		switch(kw)
 		{
 			case	xsd_name:
-				xsdtypename = getContent(attr->children);
+				if (parent != NULL)
+					not_allowed_error(attr,type);
+				else
+					xsdtypename = getContent(attr->children);
 			break ;
 
 			default:
