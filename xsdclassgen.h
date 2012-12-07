@@ -373,14 +373,10 @@ public:
 	void GenImpl(CppFile & out,Symtab & st);
 	void setCppName(const char * name)
 	{
-		m_structname = m_cname = name;
-		m_enumname   = "e_" ;
-		m_enumname  += name;
+		m_cname = name;
 	}
 
 	xsdEnumValueList m_values;
-	std::string m_enumname;
-	std::string m_structname;
 };
 
 

@@ -1504,26 +1504,24 @@ void xsdSimpleType::CalcDependency(xsdTypeList & list)
 
 void xsdElement::CalcDependency(xsdTypeList & list)
 {
-	xsdType * type = m_type;
-	if (type == NULL)
+	if (m_type == NULL)
 	{
 		if (m_typename == NULL)
 		{
-			printf("element \"%s\" has no type\n",getName());
 			m_typename = new xsdTypename("xs:integer");
 		}
 		if (m_typename != NULL)
 		{
-			type = FindType(m_typename);
-			if (type == NULL)
+			m_type = FindType(m_typename);
+			if (m_type == NULL)
 			{
 				printf("element \"%s\": type  \"%s\" not found\n",getName(),m_typename->m_name.c_str());
 			}
 		}
 	}
-	if (type != NULL)
+	if (m_type != NULL)
 	{
-		type->CalcDependency(list);
+		m_type->CalcDependency(list);
 	}
 }
 
@@ -1676,13 +1674,13 @@ int main(int argc, char * argv[])
 		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
 		{
 			xsdNamespace * ns = *nsi ;
-			//ns->m_types.CalcDependency(deplist);
 			ns->m_elements.CalcDependency(deplist);
 		}
 		for (typeIterator ti = deplist.begin() ; ti != deplist.end() ; ti++)
 		{
 			xsdType * type = *ti ;
-			type->GenHeader(hfile,1);
+			if (!type->isLocal())
+				type->GenHeader(hfile,1);
 		}
 
 		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
