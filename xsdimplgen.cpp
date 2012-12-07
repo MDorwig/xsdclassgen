@@ -369,22 +369,23 @@ void xsdEnum::GenHeader(CppFile & out,int indent)
 	/*
 	 * enums werden in einer struktur gekapselt um die get/set Methoden zu implementieren
 	 */
-	out.iprintln(indent,"struct %s",m_structname.c_str());
+	const char * typname = getCppName();
+	out.iprintln(indent,"struct %s",typname);
 	out.iprintln(indent,"{");
-	out.iprintln(++indent,"enum %s",m_enumname.c_str());
+	out.iprintln(++indent,"enum e_%s",typname);
 	out.iprintln(indent,"{");
 	enumIterator si ;
 	indent++;
 	for (si = m_values.begin() ; si != m_values.end() ; si++)
 	{
 		xsdEnumValue * v = *si ;
-		out.iprintln(indent,"%s_%s,",m_enumname.c_str(),v->getCppName());
+		out.iprintln(indent,"e_%s,",v->getCppName());
 	}
 	out.iprintln(--indent,"} m_value;");
 	out.iprintln(indent,"void sets(const char *); // set from string");
-	out.iprintln(indent,"void set(%s v) { m_value = v;} ",m_enumname.c_str()) ;
+	out.iprintln(indent,"void set(e_%s v) { m_value = v;} ",typname) ;
 	out.iprintln(indent,"const char * gets(); // conver to string") ;
-	out.iprintln(indent,"%s get() { return m_value;}",m_enumname.c_str()) ;
+	out.iprintln(indent,"e_%s get() { return m_value;}",typname) ;
 	out.iprintln(--indent,"} ;");
 }
 
@@ -393,6 +394,8 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st)
 	/*
 	 * generate code to convert this enum to a string
 	 */
+	std::string m_enumname = "e_";
+	m_enumname += getCppName();
 	std::string qname = getQualifiedName();
 	out.iprintln(0,"const char * %s::gets()",qname.c_str());
 	out.iprintln(0,"{");
@@ -434,6 +437,8 @@ void xsdRestriction::GenHeader(CppFile & out,int indent)
 {
 	if (m_enum != NULL)
 	{
+		if (isLocal())
+			m_enum->setCppName("value_t");
 		m_enum->GenHeader(out,indent);
 	}
 	else
