@@ -64,21 +64,28 @@ class xsdEnumValue
 public:
 	xsdEnumValue(const char * value)
 	{
-		m_Value = value;
-		m_cname = MakeIdentifier("e",value);
+		m_Value  = value;
+		m_eValue = MakeIdentifier("e_",value);
+		m_sValue = MakeIdentifier("",value);
 	}
 	const char * getName()
 	{
 		return m_Value.c_str();
 	}
 
-	const char * getCppName()
+	const char * getEnumValue()
 	{
-		return m_cname.c_str();
+		return m_eValue.c_str();
 	}
 
-	std::string m_Value ;
-	std::string m_cname;
+	const char * getSymbolName()
+	{
+		return m_sValue.c_str();
+	}
+
+	std::string m_Value;
+	std::string m_eValue;
+	std::string m_sValue;
 };
 
 typedef std::list<xsdEnumValue *> xsdEnumValueList;
@@ -159,6 +166,7 @@ public:
 	xsdType * Find(const char * name);
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent,bool choice);
+	void GenImpl(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st);
 	static int nextlistno;
 	int  listno;
@@ -240,7 +248,8 @@ public:
 		m_parent=parent;
 		m_tag = tag ;
 		m_id = ++m_count;
-		m_impl = builtin ;
+		m_hdrimpl = builtin ;
+		m_cppimpl = builtin ;
 		m_indeplist = false ;
 	}
 
@@ -297,6 +306,7 @@ public:
 	}
 	virtual void GenHeader(CppFile & out,int indent);
 	virtual void GenImpl(CppFile & out,Symtab & st);
+	virtual void GenAttrHeader(CppFile & out,int indent) {}
 	virtual void GenLocal(CppFile & out,Symtab & st) {}
 	virtual void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 
@@ -307,7 +317,8 @@ public:
 	bool        m_local;
 	typetag 		m_tag;
 	int     		m_id ;
-	bool    		m_impl;
+	bool    		m_hdrimpl;
+	bool    		m_cppimpl;
 	bool    		m_indeplist;
 	static int 	m_count;
 };
@@ -611,6 +622,7 @@ public:
 	void CalcDependency(xsdTypeList & list);
 
 	void GenHeader(CppFile & out,int indent);
+	void GenAttrHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
