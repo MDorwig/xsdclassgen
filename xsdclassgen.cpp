@@ -210,6 +210,8 @@ public:
 	std::string    m_href;
 	xsdTypeList    m_types;
 	xsdElementList m_elements;
+	xsdTypeList 	 m_deplist;
+
 	void GenSymtab(Symtab & st)
 	{
 	}
@@ -372,9 +374,9 @@ void not_allowed_error(xmlNodePtr e,xmlNodePtr n)
 	printf("%s:%d \"%s\" not allowed in \"%s\"\n",e->doc->URL,e->line,e->name,n->name);
 }
 
-void not_allowed_error(xmlAttrPtr a,xmlNodePtr n)
+void not_allowed_error(xmlAttrPtr e,xmlNodePtr n)
 {
-	printf("%s:%d \"%s\" not allowed in \"%s\"\n",a->doc->URL,a->parent->line,a->name,n->name);
+	printf("%s:%d \"%s\" not allowed in \"%s\"\n",e->doc->URL,e->parent->line,e->name,n->name);
 }
 
 void not_supported_error(xmlNodePtr e,xmlNodePtr n)
@@ -1020,7 +1022,6 @@ xsdList * ParseList(xmlNodePtr list,xsdType * parent,Symtab & st)
 xsdUnion * ParseUnion(xmlNodePtr type,xsdType * parent,Symtab & st)
 {
 	const char * xsdmemberTypes = "" ;
-	const char * xsdname = "" ;
 	xsd_keyword kw ;
 	xsdUnion   * xsdtype = NULL;
 	for_each_attr(attr,type)
@@ -1028,10 +1029,6 @@ xsdUnion * ParseUnion(xmlNodePtr type,xsdType * parent,Symtab & st)
 		kw = Lookup(attr->name);
 		switch(kw)
 		{
-			case	xsd_name :
-				xsdname = getContent(attr->children);
-			break ;
-
 			case	xsd_itemType:
 				xsdmemberTypes = getContent(attr->children);
 			break ;
@@ -1075,10 +1072,11 @@ xsdSimpleType * ParseSimpleType(xmlNodePtr type,const char * elemname,xsdType * 
 		switch(kw)
 		{
 			case	xsd_name:
+				xsdtypename = getContent(attr->children);
 				if (parent != NULL)
+				{
 					not_allowed_error(attr,type);
-				else
-					xsdtypename = getContent(attr->children);
+				}
 			break ;
 
 			default:
@@ -1282,9 +1280,9 @@ const char * xsdType::getCppName()
 		case	type_restriction:
 		case	type_list:
 		case	type_union:
-															name = m_parent->getCppName(); break ;
 		case	type_simple:
 		case	type_complex:
+		case	type_sequence:
 			if (m_cname.empty() && m_parent != NULL)
 				name = m_parent->getCppName();
 			else
@@ -1359,6 +1357,11 @@ bool  xsdType::isfloat()
 	return res ;
 }
 
+bool  xsdType::isScalar()
+{
+	return isInteger() || isfloat() || (isString() && getDim() == 1) ;
+}
+
 bool  xsdType::isString()
 {
 	return m_tag == type_string;
@@ -1368,7 +1371,10 @@ std::string xsdType::getQualifiedName()
 {
 	std::string res ;
 	if (m_parent == NULL)
+	{
 		res = m_cname;
+		printf("QualifiedName=%s\n",res.c_str());
+	}
 	else
 	{
 		res = m_parent->getQualifiedName();
@@ -1376,17 +1382,20 @@ std::string xsdType::getQualifiedName()
 		{
 			res += "::" ;
 			res += m_cname;
+			printf("QualifiedName=%s\n",res.c_str());
 		}
 	}
-	printf("QualifiedName=%s\n",res.c_str());
 	return res ;
 }
+
+int xsdTypeList::nextlistno;
 
 void xsdTypeList::CalcDependency(xsdTypeList & list)
 {
 	for (typeIterator ti = begin() ; ti != end() ; ti++)
 	{
-		(*ti)->CalcDependency(list);
+		xsdType * type = *ti;
+		type->CalcDependency(list);
 	}
 }
 
@@ -1426,6 +1435,8 @@ void xsdRestriction::CalcDependency(xsdTypeList & list)
 {
 	if (m_base != NULL)
 		m_base->CalcDependency(list);
+	if (m_simple != NULL)
+		m_simple->CalcDependency(list);
 }
 
 void xsdAttribute::CalcDependency(xsdTypeList & list)
@@ -1480,7 +1491,6 @@ void xsdComplexType::CalcDependency(xsdTypeList & list)
 {
 	if (!m_indeplist)
 	{
-		m_indeplist = true;
 		for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
 		{
 			(*ai)->CalcDependency(list);
@@ -1489,14 +1499,17 @@ void xsdComplexType::CalcDependency(xsdTypeList & list)
 		{
 			m_type->CalcDependency(list);
 		}
-		list.push_back(this);
+		if (m_parent == NULL)
+		{
+			m_indeplist = true;
+			printf("add %s to deplist %d\n",getCppName(),list.listno);
+			list.push_back(this);
+		}
 	}
 }
 
 void xsdSimpleType::CalcDependency(xsdTypeList & list)
 {
-	if (m_name.empty())
-		return ;
 	if (!m_indeplist)
 	{
 		if (m_rest != NULL)
@@ -1505,13 +1518,18 @@ void xsdSimpleType::CalcDependency(xsdTypeList & list)
 			m_list->CalcDependency(list);
 		else if (m_union != NULL)
 			m_union->CalcDependency(list);
-		m_indeplist = true ;
-		list.push_back(this);
+		if (m_parent == NULL)
+		{
+			m_indeplist = true ;
+			printf("add %s to deplist %d\n",getCppName(),list.listno);
+			list.push_back(this);
+		}
 	}
 }
 
 void xsdElement::CalcDependency(xsdTypeList & list)
 {
+	printf("CalcDep for elem %s\n",getCppName());
 	if (m_type == NULL)
 	{
 		if (m_typename == NULL)
@@ -1529,14 +1547,25 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 	}
 	if (m_type != NULL)
 	{
-		m_type->CalcDependency(list);
+		if (m_type->isLocal() && !m_type->m_indeplist)
+		{
+			m_type->CalcDependency(m_deplist);
+			if (!m_type->m_indeplist)
+			{
+				printf("add %s to %s deplist %d\n",m_type->getCppName(),getCppName(),m_deplist.listno);
+				m_deplist.push_back(m_type);
+			}
+		}
+		else
+		{
+			m_type->CalcDependency(m_tns->m_deplist);
+		}
 	}
 }
 
 void xsdElementList::CalcDependency(xsdTypeList & list)
 {
 	elementIterator eli ;
-	typeIterator tli ;
 	for (eli = begin() ; eli != end(); eli++)
 	{
 		xsdElement * elem = *eli ;
@@ -1556,7 +1585,6 @@ xsdType * createDateTime()
 
 int main(int argc, char * argv[])
 {
-	xsdSchema * xmlschema = NULL;
 	const char * xsdfilename = NULL;
 	char hfilename[256];
 	char cppfilename[256];
@@ -1667,7 +1695,7 @@ int main(int argc, char * argv[])
 				switch(kw)
 				{
 					case	xsd_schema:
-						xmlschema = ParseSchema(child,symtab);
+						ParseSchema(child,symtab);
 					break ;
 
 					default:
@@ -1678,24 +1706,25 @@ int main(int argc, char * argv[])
 		}
 		symtab.sortbyname();
 		cppfile.GenSymtab(symtab);
-		xsdTypeList deplist;
 		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
 		{
 			xsdNamespace * ns = *nsi ;
-			ns->m_elements.CalcDependency(deplist);
+			printf("global typelist %d\n",ns->m_deplist.listno);
+			ns->m_types.CalcDependency(ns->m_deplist);
+			for (typeIterator ti = ns->m_deplist.begin() ; ti != ns->m_deplist.end() ; ti++)
+			{
+				xsdType * type = *ti;
+				printf("type %s from deplist\n",type->getCppName());
+				type->GenHeader(hfile,0);
+				type->GenLocal(cppfile,symtab);
+				type->GenImpl(cppfile,symtab);
+			}
 		}
-		for (typeIterator ti = deplist.begin() ; ti != deplist.end() ; ti++)
-		{
-			xsdType * type = *ti ;
-			if (!type->isLocal())
-				type->GenHeader(hfile,1);
-		}
-
+#if 0
 		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
 		{
 			xsdNamespace * ns = *nsi ;
 			elementIterator ei ;
-			hfile.printf("/*\n Namespace %s\n*/\n\n",ns->m_name.c_str());
 			for (ei = ns->m_elements.begin() ; ei != ns->m_elements.end(); ei++)
 			{
 				xsdElement * elem = *ei ;
@@ -1708,6 +1737,7 @@ int main(int argc, char * argv[])
 				}
 			}
 		}
+#endif
 	}
 	return 0 ;
 }
