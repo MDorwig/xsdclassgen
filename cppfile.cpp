@@ -136,6 +136,22 @@ void CppFile::GenSymtab(Symtab & symtab)
 			    "  if (child->children != NULL)\n"
 			    "    content = (const char*)child->children->content;\n"
 			    "  return content;\n"
-					"}\n");
+					"}\n\n");
+
+	println("static char * mystrtok(char ** cp,const char * delim)\n"
+	        "{\n"
+				  "  char * start = *cp;\n"
+		      "  char * end;\n"
+			    "  if (*start == 0)\n"
+	        "    return NULL;\n"
+          "  end = strstr(start,delim);\n"
+		      "  if (end != NULL)\n"
+			    "    *end++ = 0;\n"
+		      "  else\n"
+			    "    end = start+strlen(start);\n"
+		      "  *cp = end ;\n"
+		      "  return start ;\n"
+	        "}\n");
+
 }
 
