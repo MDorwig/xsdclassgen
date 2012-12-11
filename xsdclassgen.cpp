@@ -477,6 +477,7 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 	xsdElement * xsdelem     = NULL;
 	xsdType    * xsdtype     = NULL;
 	const char * xsdname     = NULL;
+	const char * xsddefault  = NULL;
 	xsdTypename* xsdtypename = NULL;
 	int minOccurs = 0 ;
 	int maxOccurs = 0 ;
@@ -501,6 +502,10 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 
 			case	xsd_maxOccurs:
 				maxOccurs = strtol(getContent(attr->children),NULL,10);
+			break ;
+
+			case	xsd_default:
+				xsddefault = getContent(attr->children);
 			break ;
 
 			default:
@@ -538,7 +543,7 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			}
 		}
 	}
-	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype,minOccurs,maxOccurs,isChoice);
+	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype,minOccurs,maxOccurs,isChoice,xsddefault);
 	return xsdelem;
 }
 
@@ -1733,9 +1738,9 @@ int main(int argc, char * argv[])
 			{
 				xsdType * type = *ti;
 				printf("type %s from deplist\n",type->getCppName());
-				type->GenHeader(hfile,0);
-				type->GenLocal(cppfile,symtab);
-				type->GenImpl(cppfile,symtab);
+				type->GenHeader(hfile,0,NULL);
+				type->GenLocal(cppfile,symtab,NULL);
+				type->GenImpl(cppfile,symtab,NULL);
 			}
 		}
 #if 0
