@@ -633,7 +633,7 @@ public:
 class xsdElement
 {
 public:
-	xsdElement(const char * name,const char * id,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs)
+	xsdElement(const char * name,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs,bool isChoice)
 	{
 		if (strchr(name,':') != NULL)
 		{
@@ -641,11 +641,11 @@ public:
 				m_ns += *name++;
 			name++;
 		}
+		m_isChoice   = isChoice;
 		m_name       = name;
-		if (id)
-			m_cname = MakeIdentifier("m_",id) ;
-		else
-			m_cname      = MakeIdentifier("m_",name);
+		m_cname      = MakeIdentifier("m_",name);
+		if (m_isChoice)
+			m_choice_selector = MakeIdentifier("e_",name);
 		m_typename   = typname;
 		m_type       = type ;
 		m_minOccurs  = minOccurs;
@@ -681,12 +681,14 @@ public:
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
+	std::string m_choice_selector;
 	xsdTypename * m_typename;
 	xsdNamespace* m_tns ;
 	xsdType *   m_type ;
 	xsdTypeList m_deplist;
 	int         m_minOccurs;
 	int         m_maxOccurs;
+	bool        m_isChoice;
 };
 
 class xsdSchema
