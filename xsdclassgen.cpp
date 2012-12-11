@@ -313,6 +313,11 @@ xsdType * FindType(xsdTypename * tn)
 
 void AddType(xsdType * type)
 {
+	if (targetNamespace == NULL)
+	{
+			printf("no targetNamespace\n");
+			targetNamespace = AddNamespace("","");
+	}
 	xsdNamespace * ns = targetNamespace;
 	if (!type->m_ns.empty())
 	{
@@ -1370,6 +1375,11 @@ bool  xsdType::isString()
 	return m_tag == type_string;
 }
 
+bool xsdType::isChar()
+{
+	return m_tag == type_string && getDim() == 1 ;
+}
+
 std::string xsdType::getQualifiedName()
 {
 	std::string res ;
@@ -1672,8 +1682,8 @@ int main(int argc, char * argv[])
 			hfiledefine += c ;
 		}
 		hfiledefine += "_INCLUDED";
-		hfile.printf("#ifndef %s\n",hfiledefine.c_str());
-		hfile.printf("#define %s\n",hfiledefine.c_str());
+		hfile.println("#ifndef %s",hfiledefine.c_str());
+		hfile.println("#define %s\n",hfiledefine.c_str());
 		CppFile cppfile(cppfilename);
 		if (cppfile.create() == false)
 		{
@@ -1683,7 +1693,7 @@ int main(int argc, char * argv[])
 		hfile.println("#include <stdio.h>");
 		hfile.println("#include <stdlib.h>");
 		hfile.println("#include <string.h>");
-		hfile.println("#include <libxml/parser.h>");
+		hfile.println("#include <libxml/parser.h>\n");
 		cppfile.println("#include \"%s\"",hfileinclude.c_str());
 		cppfile.println();
 		cppfile.println("#define for_each_child(child,node) for (xmlNodePtr child = node->children   ; child != NULL ; child = child->next)");
@@ -1743,7 +1753,7 @@ int main(int argc, char * argv[])
 				type->GenImpl(cppfile,symtab,NULL);
 			}
 		}
-#if 0
+#if 1
 		for (NamespaceList::iterator nsi = namespaces.begin() ; nsi != namespaces.end() ; nsi++)
 		{
 			xsdNamespace * ns = *nsi ;
@@ -1751,12 +1761,13 @@ int main(int argc, char * argv[])
 			for (ei = ns->m_elements.begin() ; ei != ns->m_elements.end(); ei++)
 			{
 				xsdElement * elem = *ei ;
+				elem->CalcDependency(elem->m_deplist);
 				if (elem->m_type != NULL)
 				{
 					const char * name = elem->getCppName();
 					if (strncmp(name,"m_",2) == 0)
 						name += 2 ; // skip "m_" prefix on toplevel elements
-					elem->m_type->GenImpl(cppfile,symtab);
+					elem->m_type->GenImpl(cppfile,symtab,elem->getDefault());
 				}
 			}
 		}
