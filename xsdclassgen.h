@@ -179,6 +179,7 @@ public:
 	void GenHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st);
+	void GenInit(CppFile & out,int indent);
 };
 
 typedef xsdElementList::iterator elementIterator ;
@@ -267,6 +268,7 @@ public:
 	virtual bool  isfloat();
 	virtual bool  isString();
 	virtual bool  isScalar();
+	virtual bool  isChar();
 	virtual int   getDim() { return 1 ;}
 
 	const char * getName()
@@ -690,6 +692,7 @@ public:
 	void GenHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st);
+	void GenInit(CppFile & out,int indent);
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;

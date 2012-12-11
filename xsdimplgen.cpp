@@ -16,6 +16,16 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	std::list<xsdElement*>::iterator ei;
 	out.iprintln(indent,"struct %s",getCppName());
 	out.iprintln(indent++,"{");
+	/*
+	 * Constructor
+	 */
+	out.iprintln(indent,"%s()",getCppName());
+	out.iprintln(indent++,"{");
+	m_elements.GenInit(out,indent);
+	out.iprintln(--indent,"}");
+	/*
+	 * Parse Function
+	 */
 	out.iprintln(indent,"void Parse(xmlNodePtr node);");
 	m_parent->GenAttrHeader(out,indent);
 	m_elements.GenHeader(out,indent);
@@ -185,6 +195,17 @@ void xsdElement::GenLocal(CppFile & out,Symtab & st)
 	}
 }
 
+void xsdElement::GenInit(CppFile & out,int indent)
+{
+	if (m_type->isScalar())
+	{
+		if (m_type->isInteger() || m_type->isChar())
+			out.iprintln(indent,"%s = 0;",getCppName());
+		else if (m_type->isfloat())
+			out.iprintln(indent,"%s = 0.0f;",getCppName());
+	}
+}
+
 void xsdGroup::GenHeader(CppFile & out,int indent,const char * defaultstr)
 {
 	if (m_type != NULL)
@@ -220,6 +241,15 @@ void xsdElementList::GenLocal(CppFile & out,Symtab & st)
 	{
 		xsdElement * elem = *ei ;
 		elem->GenLocal(out,st);
+	}
+}
+
+void xsdElementList::GenInit(CppFile & out,int indent)
+{
+	for (elementIterator ei = begin() ; ei != end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		elem->GenInit(out,indent);
 	}
 }
 
