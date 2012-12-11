@@ -20,7 +20,7 @@ void xsdSequence::GenHeader(CppFile & out,int indent)
 	m_parent->GenAttrHeader(out,indent);
 	m_elements.GenHeader(out,indent);
 	m_types.GenHeader(out,indent,false);
-	out.iprintln(--indent,"};");
+	out.iprintln(--indent,"};\n");
 }
 
 void xsdAll::GenHeader(CppFile & out,int indent)
@@ -29,29 +29,22 @@ void xsdAll::GenHeader(CppFile & out,int indent)
 	out.iprintln(indent,"struct %s",getCppName());
 	out.iprintln(indent++,"{");
 	out.iprintln(indent,"void Parse(xmlNodePtr node);");
-	for (ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
-	{
-		xsdElement * elem = *ei ;
-		elem->GenHeader(out,indent);
-	}
+	m_parent->GenAttrHeader(out,indent);
+	m_elements.GenHeader(out,indent);
 	out.iprintln(--indent,"};\n");
 }
 
 void xsdExtension::GenHeader(CppFile &out,int indent)
 {
-	out.Indent(indent);
-	out.printf("struct %s\n",getCppName());
-	out.Indent(indent);
-	out.printf("{\n");
+	out.iprintln(indent,"struct %s",getCppName());
+	out.iprintln(indent++,"{");
 	for (xsdAttrList::iterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
 	{
 		xsdAttribute * attr = *ai ;
-		attr->GenHeader(out,indent+1);
+		attr->GenHeader(out,indent);
 	}
-	out.Indent(indent+1);
-	out.printf("%s %s;\n",m_basetypename->getCppName(),"m_val");
-	out.Indent(indent);
-	out.printf("};\n");
+	out.iprintln(indent,"%s %s;\n",m_basetypename->getCppName(),"m_val");
+	out.iprintln(--indent,"};\n");
 }
 
 void xsdSimpleContent::GenHeader(CppFile &out,int indent)
@@ -72,10 +65,54 @@ void xsdChoice::GenHeader(CppFile &out,int indent)
 	if (!m_hdrimpl)
 	{
 		m_hdrimpl = true ;
-		out.iprintln(indent,"union");
+		out.iprintln(indent,   "struct xs_choice");
 		out.iprintln(indent++,"{");
+		/*
+		 * generate an enum to determine the taken choice
+		 */
+		out.iprintln(indent,   "enum xs_enum");
+		out.iprintln(indent++,"{");
+		out.iprintln(indent,"e_none_selected,");
+		for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+		{
+			xsdElement * elem = * ei ;
+			out.iprintln(indent,"%s,",elem->m_choice_selector.c_str());
+		}
+		out.iprintln(--indent,"} m_selected;");
+
 		m_elements.GenHeader(out,indent);
-		out.iprintln(--indent,"};");
+		/*
+		 * generate constructor to initialize the choices to NULL
+		 */
+		out.iprintln(indent,"xs_choice()");
+		out.iprintln(indent++,"{");
+		out.iprintln(indent,"m_selected = e_none_selected;");
+		for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+		{
+			xsdElement * elem = * ei ;
+			out.iprintln(indent,"%s = NULL;",elem->getCppName());
+		}
+		out.iprintln(--indent,"}");
+
+		/*
+		 * generate the destructor to delete the selected choice
+		 */
+		out.iprintln(indent,"~xs_choice()");
+		out.iprintln(indent++,"{");
+		out.iprintln(indent,  "switch(m_selected)");
+		out.iprintln(indent++,"{");
+		for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+		{
+			xsdElement * elem = * ei ;
+			out.iprintln(indent,"case %s: delete %s; break;",elem->m_choice_selector.c_str(),elem->getCppName());
+		}
+		out.iprintln(indent,  "default:");
+		out.iprintln(indent,  "break;");
+		out.iprintln(--indent,"}");
+
+		out.iprintln(--indent,"}");
+
+		out.iprintln(--indent,"} m_choice;");
 	}
 }
 
@@ -122,9 +159,11 @@ void xsdElement::GenHeader(CppFile &out,int indent)
 	{
 		int len = m_maxOccurs;
 		if (len > 1)
-			out.iprintln(indent,"%s %s[%d];",m_type->getCppName(),getCppName(),len);
+		{
+			out.iprintln(indent,"%s %s %s[%d];",m_type->getCppName(),m_isChoice ? "*" : "",getCppName(),len);
+		}
 		else
-			out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
+			out.iprintln(indent,"%s %s %s;",m_type->getCppName(),m_isChoice ? "*" : " ",getCppName());
 	}
 }
 
@@ -300,6 +339,11 @@ void xsdSequence::GenImpl(CppFile & out,Symtab & st)
 			out.iprintln(4,"break;");
 		}
 	}
+	for (typeIterator ti = m_types.begin() ; ti != m_types.end() ; ti++)
+	{
+		xsdType * type = *ti ;
+		type->GenImpl(out,st);
+	}
 	out.iprintln(4,"default:");
 	out.iprintln(4,"break;");
 	out.iprintln(3,"}");
@@ -310,7 +354,7 @@ void xsdSequence::GenImpl(CppFile & out,Symtab & st)
 void xsdSequence::GenLocal(CppFile & out,Symtab & st)
 {
 	m_elements.GenLocal(out,st);
-	m_types.GenImpl(out,st);
+	//m_types.GenImpl(out,st);
 }
 
 void xsdChoice::GenImpl(CppFile & out,Symtab & st)
@@ -318,10 +362,19 @@ void xsdChoice::GenImpl(CppFile & out,Symtab & st)
 	if (m_cppimpl)
 		return ;
 	m_cppimpl = true;
-	out.iprintln(0,"/*\n * choice\n*/");
-	out.iprintln(0,"for_each_child(child,node)");
-	out.iprintln(0,"{");
-	out.iprintln(0,"}");
+	for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		Symbol * s = st.find(elem->m_name.c_str());
+		if (s != NULL)
+		{
+			out.iprintln(4,"case sy_%s:",s->m_cname.c_str());
+			out.iprintln(5,"m_choice.m_selected = xs_choice::%s;",elem->m_choice_selector.c_str());;
+			out.iprintln(5,"m_choice.%s = new %s;",elem->getCppName(),elem->m_type->getCppName());
+			out.iprintln(5,"m_choice.%s->Parse(child);",elem->getCppName());
+			out.iprintln(4,"break;");
+		}
+	}
 }
 
 void xsdChoice::GenLocal(CppFile & out,Symtab & st)
@@ -419,6 +472,7 @@ void xsdEnum::GenHeader(CppFile & out,int indent)
 	const char * enumname = getCppName();
 	out.iprintln(indent,"enum %s",enumname);
 	out.iprintln(indent++,"{");
+	out.iprintln(indent,  "%s_invalid,",enumname);
 	enumIterator si ;
 	for (si = m_values.begin() ; si != m_values.end() ; si++)
 	{
@@ -426,6 +480,7 @@ void xsdEnum::GenHeader(CppFile & out,int indent)
 		out.iprintln(indent,"%s,",v->getEnumValue());
 	}
 	out.iprintln(--indent,"} ;");
+
 	out.iprintln(indent,"void sets(const char *); // set from string");
 	out.iprintln(indent,"void set(%s v) { m_value = v;} ",enumname) ;
 	out.iprintln(indent,"const char * gets(); // conver to string") ;
@@ -446,6 +501,7 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st)
 	out.iprintln(0,"{");
 	  out.iprintln(1,"switch(m_value)");
 	  out.iprintln(1,"{");
+	  out.iprintln(2,"case %s_invalid: return \"\";",getCppName());
 	  for (enumIterator ei = m_values.begin() ; ei != m_values.end() ; ei++)
 	  {
 		  xsdEnumValue * v = *ei ;
@@ -468,7 +524,7 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st)
 		  xsdEnumValue * val = *ei ;
 			out.iprintln(2,"case sy_%s: m_value = %s; break;",val->getSymbolName(),val->getEnumValue());
 	  }
-	    out.iprintln(2,"default: m_value = (%s)-1; break;",getCppName());
+	    out.iprintln(2,"default: m_value = %s_invalid; break;",getCppName());
 	  out.iprintln(1,"}");
 	out.iprintln(0,"}\n");
 }
@@ -487,7 +543,14 @@ void xsdRestriction::GenHeader(CppFile & out,int indent)
 		out.iprintln(indent,"struct %s",tname);
 		out.iprintln(indent++,"{");
 		m_enum->GenHeader(out,indent);
-		out.iprintln(--indent,"};");
+		/*
+		 * generate constructor
+		 */
+		out.iprintln(indent,"%s()",tname);
+		out.iprintln(indent++,"{");
+		out.iprintln(indent,"m_value = %s_invalid;",m_enum->getCppName());
+		out.iprintln(--indent,"}");
+		out.iprintln(--indent,"};\n");
 	}
 	else
 	{
@@ -497,7 +560,38 @@ void xsdRestriction::GenHeader(CppFile & out,int indent)
 			const char * basename = m_base->getCppName();
 			out.iprintln(indent,"struct %s",tname);
 			out.iprintln(indent++,"{");
+			if (isScalar() || isString())
+			{
+				/*
+				 * generate constructor
+				 */
+				out.iprintln(indent,"%s()",tname);
+				out.iprintln(indent++,"{");
+				if (isInteger())
+				{
+					out.iprintln(indent,"m_value = 0;");
+				}
+				else if (isChar())
+				{
+					out.iprintln(indent,"m_value = '\\0';");
+				}
+				else if (isfloat())
+				{
+					out.iprintln(indent,"m_value = 0.0f;");
+				}
+				else if (isString())
+				{
+					out.iprintln(indent,"memset(m_value,0,sizeof m_value);");
+				}
+				out.iprintln(--indent,"}");
+			}
+			/*
+			 * generate sets function
+			 */
 			out.iprintln(indent,"void sets(const char * str);");
+			/*
+			 * generate set/get function
+			 */
 			if (m_base->isScalar())
 			{
 				out.iprintln(indent,"void set(const %s arg);",getReturnType());
@@ -508,6 +602,9 @@ void xsdRestriction::GenHeader(CppFile & out,int indent)
 				out.iprintln(indent,"void set(const %s * arg);",getReturnType());
 				out.iprintln(indent,"%s * get();",getReturnType());
 			}
+			/*
+			 * generate gets function
+			 */
 			out.iprintln(indent,"const char * gets();");
 			if (d > 1)
 			{
@@ -517,7 +614,7 @@ void xsdRestriction::GenHeader(CppFile & out,int indent)
 			{
 				out.iprintln(indent,"%s m_value;",basename);
 			}
-			out.iprintln(--indent,"};");
+			out.iprintln(--indent,"};\n");
 		}
 		else if (m_simple != NULL)
 		{
@@ -674,7 +771,7 @@ void xsdList::GenHeader(CppFile &out,int indent)
 			}
 			else
 				out.iprintln(indent,"%s m_value;",m_itemtype->getCppName());
-			out.iprintln(--indent,"};");
+			out.iprintln(--indent,"};\n");
 		}
 	}
 }
@@ -769,8 +866,8 @@ void xsdComplexType::GenImpl(CppFile & out,Symtab & st)
 	if (m_cppimpl)
 		return ;
 	m_cppimpl = true;
-	out.iprintln(0,"/*\n * complexType %s\n*/",getName());
 	m_type->GenLocal(out,st);
+	out.iprintln(0,"/*\n * complexType %s\n*/",getName());
 	out.iprintln(0,"void %s::Parse(xmlNodePtr node)",getQualifiedName().c_str());
 	out.iprintln(0,"{");
 	if (!m_attributes.empty())

@@ -477,11 +477,10 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 	xsdElement * xsdelem     = NULL;
 	xsdType    * xsdtype     = NULL;
 	const char * xsdname     = NULL;
-	const char * xsdid       = NULL;
 	xsdTypename* xsdtypename = NULL;
 	int minOccurs = 0 ;
 	int maxOccurs = 0 ;
-
+	bool isChoice = parent != NULL && parent->m_tag == type_choice;
 	for_each_attr(attr,element)
 	{
 		xsd_keyword kw = Lookup(attr->name);
@@ -490,10 +489,6 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			case	xsd_name:
 				xsdname = getContent(attr->children);
 				st.add(xsdname);
-			break ;
-
-			case	xsd_id:
-				xsdid = getContent(attr->children);
 			break ;
 
 			case	xsd_type:
@@ -543,7 +538,7 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			}
 		}
 	}
-	xsdelem = new xsdElement(xsdname,xsdid,xsdtypename,xsdtype,minOccurs,maxOccurs);
+	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype,minOccurs,maxOccurs,isChoice);
 	return xsdelem;
 }
 
@@ -699,7 +694,10 @@ xsdChoice * ParseChoice(xmlNodePtr choice,xsdType * parent,Symtab & st)
 			switch(kw)
 			{
 				case	xsd_element:
-					xsdchoice->m_elements.push_back(ParseElement(child,xsdchoice,st));
+				{
+					xsdElement * elem = ParseElement(child,xsdchoice,st);
+					xsdchoice->m_elements.push_back(elem);
+				}
 				break ;
 
 
@@ -1646,22 +1644,42 @@ int main(int argc, char * argv[])
 			exit(2);
 		}
 		hfile.printf("/*\n automatic created by xsdclassgen\n*/\n\n");
+		std::string hfiledefine ;
+		std::string hfileinclude;
+		cp = strrchr(hfilename,'/');
+		if (cp == NULL)
+			cp = strrchr(hfilename,'\\');
+		if (cp == NULL)
+			cp = hfilename;
+		else
+			cp = cp + 1 ;
+		hfileinclude = cp ;
+		if (!isalpha(*cp) && *cp != '_')
+		{
+			hfiledefine += "_";
+			cp++;
+		}
+		while(*cp)
+		{
+			char c = toupper(*cp++);
+			if (!isalnum(c) && c != '_')
+				c = '_' ;
+			hfiledefine += c ;
+		}
+		hfiledefine += "_INCLUDED";
+		hfile.printf("#ifndef %s\n",hfiledefine.c_str());
+		hfile.printf("#define %s\n",hfiledefine.c_str());
 		CppFile cppfile(cppfilename);
 		if (cppfile.create() == false)
 		{
 			printf("can't create %s - %s\n",cppfilename,strerror(errno));
 			exit(2);
 		}
-		cppfile.println("#include <stdio.h>");
-		cppfile.println("#include <stdlib.h>");
-		cppfile.println("#include <string.h>");
-		cppfile.println("#include <libxml2/libxml/parser.h>");
-		cp = strrchr(hfilename,'/');
-		if (cp == NULL)
-			cp = strrchr(hfilename,'\\');
-		if (cp == NULL)
-			cp = hfilename-1;
-		cppfile.println("#include \"%s\"",cp+1);
+		hfile.println("#include <stdio.h>");
+		hfile.println("#include <stdlib.h>");
+		hfile.println("#include <string.h>");
+		hfile.println("#include <libxml/parser.h>");
+		cppfile.println("#include \"%s\"",hfileinclude.c_str());
 		cppfile.println();
 		cppfile.println("#define for_each_child(child,node) for (xmlNodePtr child = node->children   ; child != NULL ; child = child->next)");
 		cppfile.println("#define for_each_attr(attr,node)   for (xmlAttrPtr attr  = node->properties ; attr != NULL  ; attr = attr->next)");
@@ -1738,6 +1756,9 @@ int main(int argc, char * argv[])
 			}
 		}
 #endif
+		hfile.printf("#endif // %s\n",hfiledefine.c_str());
+		hfile.close();
+		cppfile.close();
 	}
 	return 0 ;
 }

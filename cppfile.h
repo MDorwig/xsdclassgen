@@ -18,6 +18,11 @@ public:
 		m_file = fopen(m_filename.c_str(),"w+");
 		return m_file != NULL;
 	}
+	void close()
+	{
+		if (m_file != NULL)
+			fclose(m_file);
+	}
 	void 				Indent(int indent);
 	int 				printf(const char * fmt,...)  __attribute__((format(printf,2,3)));
 	int 				iprintf(int indent,const char * fmt,...)  __attribute__((format(printf,3,4)));
