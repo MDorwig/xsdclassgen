@@ -165,9 +165,9 @@ public:
 
 	xsdType * Find(const char * name);
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent,bool choice);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool choice);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	static int nextlistno;
 	int  listno;
 };
@@ -217,7 +217,7 @@ public:
 class xsdAttrList : public std::list<xsdAttribute*>
 {
 public:
-	void GenHeader(CppFile & out,int indent);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 };
 
 typedef xsdAttrList::iterator attrIterator ;
@@ -304,10 +304,10 @@ public:
 	{
 		return m_local ;
 	}
-	virtual void GenHeader(CppFile & out,int indent);
-	virtual void GenImpl(CppFile & out,Symtab & st);
+	virtual void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	virtual void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	virtual void GenAttrHeader(CppFile & out,int indent) {}
-	virtual void GenLocal(CppFile & out,Symtab & st) {}
+	virtual void GenLocal(CppFile & out,Symtab & st,const char * defaultstr) {}
 	virtual void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 
 	std::string m_ns;
@@ -336,8 +336,8 @@ public:
 		m_values.push_back(val);
 	}
 
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void setCppName(const char * name)
 	{
 		m_cname = name;
@@ -369,9 +369,9 @@ public:
 	xsdTypename * m_itemtypename ;
 	xsdType     * m_itemtype ;
 
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	void setCppName(const char *name);
 	int  getDim();
@@ -408,9 +408,9 @@ public:
 		m_enum = NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	void setCppName(const char * name);
 	bool isInteger() { return getDim() == 1 && m_base->isInteger();}
@@ -444,10 +444,10 @@ public:
 		m_basetypename = basetypename;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent);
-//	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+//	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 
 	xsdTypename * m_basetypename ;
@@ -462,9 +462,9 @@ public:
 		m_content = NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 	xsdType * m_content; // xsd_Restriction oder xsd_Extension
 };
@@ -493,9 +493,9 @@ public:
 		m_union= NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,const char * leftside,const char * rightside);
 	int  getDim();
 	void setCppName(const char * name);
@@ -514,9 +514,9 @@ public:
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 	xsdElementList m_elements ;
 	xsdTypeList    m_types ;
@@ -532,9 +532,9 @@ public:
 	}
 
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 	xsdType * m_type ;
 };
@@ -543,7 +543,7 @@ class xsdGroupList : public std::list<xsdGroup*>
 {
 public:
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 };
 
 typedef xsdGroupList::iterator groupIterator ;
@@ -569,9 +569,9 @@ public:
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 	int            m_minOccurs;
 	int            m_maxOccurs;
@@ -590,9 +590,9 @@ public:
 	}
 
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 	xsdElementList m_elements ;
 };
@@ -621,10 +621,10 @@ public:
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenHeader(CppFile & out,int indent);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	void GenAttrHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	xsdType *   m_type;
 	xsdAttrList m_attributes;
@@ -633,7 +633,7 @@ public:
 class xsdElement
 {
 public:
-	xsdElement(const char * name,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs,bool isChoice)
+	xsdElement(const char * name,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs,bool isChoice,const char * xsddefault)
 	{
 		if (strchr(name,':') != NULL)
 		{
@@ -642,6 +642,8 @@ public:
 			name++;
 		}
 		m_isChoice   = isChoice;
+		if (xsddefault != NULL)
+			m_default    = xsddefault;
 		m_name       = name;
 		m_cname      = MakeIdentifier("m_",name);
 		if (m_isChoice)
@@ -673,6 +675,16 @@ public:
 		return i.c_str() ;
 	}
 
+	bool hasDefault()
+	{
+		return !m_default.empty();
+	}
+
+	const char * getDefault()
+	{
+		return m_default.c_str();
+	}
+
 	void CalcDependency(xsdTypeList & list);
 
 	void GenHeader(CppFile & out,int indent);
@@ -681,6 +693,7 @@ public:
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
+	std::string m_default;
 	std::string m_choice_selector;
 	xsdTypename * m_typename;
 	xsdNamespace* m_tns ;
