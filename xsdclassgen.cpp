@@ -1282,7 +1282,7 @@ const char * xsdType::getCppName()
 		case	type_int:						name = "int";						break ;
 		case	type_long:    			name = "long";					break ;
 		case	type_boolean:				name = "bool";					break ;
-		case  type_string:        name = "char";   				break ;
+		case  type_string:        name = "xs_string";			break ;
 		case	type_integer:       name = "int";						break ;
 		case	type_enum:
 		case	type_restriction:
@@ -1414,6 +1414,9 @@ void xsdTypeList::CalcDependency(xsdTypeList & list)
 
 void xsdGroup::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	if (m_type != NULL)
 	{
 		m_type->CalcDependency(list);
@@ -1430,6 +1433,9 @@ void xsdGroupList::CalcDependency(xsdTypeList & list)
 
 void xsdSimpleContent::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	if (m_content != NULL)
 	{
 		m_content->CalcDependency(list);
@@ -1446,6 +1452,9 @@ void xsdList::CalcDependency(xsdTypeList & list)
 
 void xsdRestriction::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	if (m_base != NULL)
 		m_base->CalcDependency(list);
 	if (m_simple != NULL)
@@ -1460,6 +1469,9 @@ void xsdAttribute::CalcDependency(xsdTypeList & list)
 
 void xsdExtension::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	if (m_basetypename != NULL)
 	{
 		xsdType * type = FindType(m_basetypename);
@@ -1483,18 +1495,27 @@ void xsdSequenceList::CalcDependency(xsdTypeList & list)
 
 void xsdSequence::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	m_elements.CalcDependency(list);
 	m_types.CalcDependency(list);
 }
 
 void xsdAll::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	m_elements.CalcDependency(list);
 }
 
 
 void xsdChoice::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	m_elements.CalcDependency(list);
 	m_sequences.CalcDependency(list);
 	m_groups.CalcDependency(list);
@@ -1502,6 +1523,9 @@ void xsdChoice::CalcDependency(xsdTypeList & list)
 
 void xsdComplexType::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	if (!m_indeplist)
 	{
 		for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
@@ -1523,6 +1547,9 @@ void xsdComplexType::CalcDependency(xsdTypeList & list)
 
 void xsdSimpleType::CalcDependency(xsdTypeList & list)
 {
+	if (m_cd)
+		return ;
+	m_cd = true;
 	if (!m_indeplist)
 	{
 		if (m_rest != NULL)

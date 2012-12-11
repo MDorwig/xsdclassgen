@@ -248,6 +248,7 @@ public:
 		}
 		m_parent=parent;
 		m_tag = tag ;
+		m_cd  = false;
 		m_id = ++m_count;
 		m_hdrimpl = builtin ;
 		m_cppimpl = builtin ;
@@ -317,6 +318,7 @@ public:
 	std::string m_cname;
 	xsdType *   m_parent;
 	bool        m_local;
+	bool        m_cd;
 	typetag 		m_tag;
 	int     		m_id ;
 	bool    		m_hdrimpl;
