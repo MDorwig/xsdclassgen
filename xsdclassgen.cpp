@@ -1282,7 +1282,7 @@ const char * xsdType::getCppName()
 		case	type_int:						name = "int";						break ;
 		case	type_long:    			name = "long";					break ;
 		case	type_boolean:				name = "bool";					break ;
-		case  type_string:        name = "xs_string";			break ;
+		case  type_string:        name = "char";					break ;
 		case	type_integer:       name = "int";						break ;
 		case	type_enum:
 		case	type_restriction:
@@ -1510,6 +1510,11 @@ void xsdAll::CalcDependency(xsdTypeList & list)
 	m_elements.CalcDependency(list);
 }
 
+bool xsdAll::CheckCycle(xsdElement * elem)
+{
+	return m_elements.CheckCycle(elem);
+}
+
 
 void xsdChoice::CalcDependency(xsdTypeList & list)
 {
@@ -1521,10 +1526,17 @@ void xsdChoice::CalcDependency(xsdTypeList & list)
 	m_groups.CalcDependency(list);
 }
 
+bool xsdChoice::CheckCycle(xsdElement * elem)
+{
+	return m_elements.CheckCycle(elem);
+}
+
 void xsdComplexType::CalcDependency(xsdTypeList & list)
 {
 	if (m_cd)
+	{
 		return ;
+	}
 	m_cd = true;
 	if (!m_indeplist)
 	{
@@ -1543,6 +1555,10 @@ void xsdComplexType::CalcDependency(xsdTypeList & list)
 			list.push_back(this);
 		}
 	}
+}
+bool xsdComplexType::CheckCycle(xsdElement * elem)
+{
+
 }
 
 void xsdSimpleType::CalcDependency(xsdTypeList & list)
@@ -1564,6 +1580,47 @@ void xsdSimpleType::CalcDependency(xsdTypeList & list)
 			printf("add %s to deplist %d\n",getCppName(),list.listno);
 			list.push_back(this);
 		}
+	}
+}
+
+void CheckCycle(xsdElement * e,xsdType * t)
+{
+	switch(t->m_tag)
+	{
+		case	type_complex:
+		{
+			xsdComplexType * ct = (xsdComplexType*)t ;
+			CheckCycle(e,ct->m_type);
+		}
+		break ;
+		case	type_sequence:
+		{
+			xsdSequence * st = (xsdSequence*)t ;
+			for (elementIterator ei = st->m_elements.begin() ; ei != st->m_elements.end() ; ei++)
+			{
+				if (e == *ei)
+				{
+					printf("%s has cyclic type ref\n",e->getName());
+				}
+			}
+		}
+		break ;
+
+		case	type_all:
+		{
+			xsdAll * st = (xsdAll*)t ;
+			for (elementIterator ei = st->m_elements.begin() ; ei != st->m_elements.end() ; ei++)
+			{
+				if (e == *ei)
+				{
+					printf("%s has cyclic type ref\n",e->getName());
+				}
+			}
+		}
+		break ;
+
+		case	type_choice:
+		break ;
 	}
 }
 
@@ -1598,6 +1655,7 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 		}
 		else
 		{
+			CheckCycle(this,m_type);
 			m_type->CalcDependency(m_tns->m_deplist);
 		}
 	}
@@ -1612,6 +1670,17 @@ void xsdElementList::CalcDependency(xsdTypeList & list)
 		elem->CalcDependency(list);
 	}
 }
+
+bool xsdElementList::CheckCycle(xsdElement * elem)
+{
+	for (elementIterator ei = begin() ; ei != end() ; ei++)
+	{
+		if (elem == *ei)
+			return true ;
+	}
+	return false ;
+}
+
 
 xsdType * createDateTime()
 {
