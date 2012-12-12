@@ -28,12 +28,14 @@ public:
 	Symtab()
 	{
 		m_nextenumval = 0 ;
+		m_hasAttributes = false;
 	}
 
 	Symbol * find(const char * name);
 	void     add(const char * name);
 	void     sortbyname();
 	int 		 m_nextenumval ;
+	bool     m_hasAttributes;
 };
 
 #endif

@@ -176,20 +176,19 @@ void xsdElement::GenHeader(CppFile &out,int indent)
 	}
 	else
 	{
-		int len = m_maxOccurs;
-		if (len > 1)
-		{
-			if (isPtr())
-				out.iprintln(indent,"%s * %s[%d];",m_type->getCppName(),getCppName(),len);
-			else
-				out.iprintln(indent,"%s %s[%d];",m_type->getCppName(),getCppName(),len);
-		}
-		else
+		if (m_maxOccurs == 1)
 		{
 			if (isPtr())
 				out.iprintln(indent,"%s * %s;",m_type->getCppName(),getCppName());
 			else
 				out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
+		}
+		else
+		{
+			if (isPtr())
+				out.iprintln(indent,"xs_array<%s> * %s;",m_type->getCppName(),getCppName());
+			else
+				out.iprintln(indent,"xs_array<%s> %s;",m_type->getCppName(),getCppName());
 		}
 	}
 }
@@ -217,13 +216,6 @@ void xsdElement::GenInit(CppFile & out,int indent)
 	if (isPtr())
 	{
 		out.iprintln(indent,"%s = NULL;",getCppName());
-	}
-	else if (m_type->isScalar())
-	{
-		if (m_type->isInteger() || m_type->isChar())
-			out.iprintln(indent,"%s = 0;",getCppName());
-		else if (m_type->isfloat())
-			out.iprintln(indent,"%s = 0.0f;",getCppName());
 	}
 }
 
@@ -278,22 +270,13 @@ void xsdAttribute::GenHeader(CppFile & out,int indent)
 {
 	if (m_type != NULL)
 	{
-		if (m_fixed.empty())
-			out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
-		else
-		{
-			out.iprintln(indent,"char %s[%d+1];",getCppName(),m_fixed.size());
-		}
+		out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
 	}
 }
 
 const char * xsdRestriction::getReturnType()
 {
-	static std::string s ;
-	s = m_base->getCppName();
-	if (!isScalar())
-		s += " * ";
-	return s.c_str() ;
+	return m_base->getCppName() ;
 }
 
 void xsdTypeList::GenHeader(CppFile & out,int indent,const char * defaultstr,bool choice)
@@ -545,10 +528,10 @@ void xsdEnum::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	}
 	out.iprintln(--indent,"} ;");
 
-	out.iprintln(indent,"void sets(const char *); // set from string");
+	out.iprintln(indent,"void sets(const char *);");
 	out.iprintln(indent,"void set(%s v) { m_value = v;} ",enumname) ;
-	out.iprintln(indent,"const char * gets(); // conver to string") ;
-	out.iprintln(indent,"%s get() { return m_value;}",enumname) ;
+	out.iprintln(indent,"const char * gets() const;") ;
+	out.iprintln(indent,"%s get() const { return m_value;}",enumname) ;
 	out.iprintln(indent,"%s m_value;",enumname);
 }
 
@@ -561,7 +544,7 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 		return ;
 	m_cppimpl = true;
 	std::string qname = m_parent->getQualifiedName();
-	out.iprintln(0,"const char * %s::gets()",qname.c_str());
+	out.iprintln(0,"const char * %s::gets() const ",qname.c_str());
 	out.iprintln(0,"{");
 	  out.iprintln(1,"switch(m_value)");
 	  out.iprintln(1,"{");
@@ -623,8 +606,10 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	{
 		if (m_base != NULL)
 		{
-			int d = getDim();
 			const char * basename = m_base->getCppName();
+			out.iprintln(indent,"/*");
+			out.iprintln(indent," * xs:restriction %s base %s ",getName(),m_base->getCppName());
+			out.iprintln(indent," */");
 			out.iprintln(indent,"struct %s",tname);
 			out.iprintln(indent++,"{");
 			if (isScalar() || isString())
@@ -638,56 +623,48 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 				{
 					out.iprintln(indent,"sets(\"%s\");",defaultstr);
 				}
-				else
-				{
-					if (isInteger())
-					{
-						out.iprintln(indent,"m_value = 0;");
-					}
-					else if (isChar())
-					{
-						out.iprintln(indent,"m_value = '\\0';");
-					}
-					else if (isfloat())
-					{
-						out.iprintln(indent,"m_value = 0.0f;");
-					}
-					else if (isString())
-					{
-						out.iprintln(indent,"memset(m_value,0,sizeof m_value);");
-					}
-				}
 				out.iprintln(--indent,"}");
 			}
 			/*
 			 * generate sets function
 			 */
-			out.iprintln(indent,"void sets(const char * str);");
+			out.iprintln(indent,  "void sets(const char * str)");
+			out.iprintln(indent++,"{");
+			out.iprintln(indent,  "m_value.sets(str);");
+			out.iprintln(--indent,"}");
 			/*
 			 * generate set/get function
 			 */
-			if (m_base->isScalar())
+			out.iprintln(indent,"void set(const %s & val)",getReturnType());
+			out.iprintln(indent++,"{");
+			out.iprintln(indent,"m_value.set(val);");
+			out.iprintln(--indent,"}");
+
+			if (!m_base->isString())
 			{
-				out.iprintln(indent,"void set(const %s arg);",getReturnType());
-				out.iprintln(indent,"%s get();",getReturnType());
-			}
-			else
-			{
-				out.iprintln(indent,"void set(const %s * arg);",getReturnType());
-				out.iprintln(indent,"%s * get();",getReturnType());
+				out.iprintln(indent,"const %s & get() const",getReturnType());
+				out.iprintln(indent++,"{");
+				out.iprintln(indent,"  return m_value.get();");
+				out.iprintln(--indent,"}");
 			}
 			/*
-			 * generate gets function
+			 * generate the gets function
 			 */
-			out.iprintln(indent,"const char * gets();");
-			if (d > 1)
+			if (m_base->isString())
 			{
-				out.iprintln(indent,"%s m_value[%d];",basename,d);
+				out.iprintln(indent,"const char * gets() const");
+				out.iprintln(indent++,"{");
+				out.iprintln(indent,"return m_value.gets();");
+				out.iprintln(--indent,"}");
 			}
 			else
 			{
-				out.iprintln(indent,"%s m_value;",basename);
+				out.iprintln(indent,"xs_string gets() const ");
+				out.iprintln(indent++,"{");
+				out.iprintln(indent,"return m_value.gets();");
+				out.iprintln(--indent,"}");
 			}
+			out.iprintln(indent,"%s m_value;",basename);
 			out.iprintln(--indent,"};\n");
 		}
 		else if (m_simple != NULL)
@@ -713,72 +690,6 @@ void xsdRestriction::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	}
 	else
 	{
-		const char * basename = m_base->getCppName();
-		out.iprintln(0,"void %s::sets(const char * str)",getQualifiedName().c_str());
-		out.iprintln(0,"{");
-		if (isInteger())
-		{
-			out.iprintln(1,"%s t;",basename);
-			if (m_base->isSignedInteger())
-				out.iprintln(1,"t = strtol(str,NULL,10);");
-			else
-				out.iprintln(1,"t = strtoul(str,NULL,10)");
-			out.iprintln(1,"set(t);");
-		}
-		else if (isString())
-		{
-			out.iprintln(1,"strncpy(m_value,str,sizeof m_value-1);");
-			out.iprintln(1,"m_value[sizeof m_value-1] = 0;");
-		}
-		else if (isChar())
-		{
-			out.iprintln(1,"m_value = str[0];");
-		}
-		out.iprintln(0,"}");
-		out.iprintln(0,"void %s::set(const %s val)",getQualifiedName().c_str(),getReturnType());
-		out.iprintln(0,"{");
-		if (isString())
-		{
-			out.iprintln(1,"strncpy(m_value,val,sizeof m_value-1);");
-			out.iprintln(1,"m_value[sizeof m_value-1] = 0;");
-		}
-		else if (isScalar())
-			out.iprintln(1,"m_value = val;");
-		else
-			out.iprintln(1,"memcpy(m_value,val,sizeof m_value);");
-		out.iprintln(0,"}");
-		out.iprintln(0,"%s %s::get()",getReturnType(),getQualifiedName().c_str());
-		out.iprintln(0,"{");
-		out.iprintln(0,"  return m_value;");
-		out.iprintln(0,"}");
-		/*
-		 * generate the gets function
-		 * it conerts m_value into a string
-		 */
-		out.iprintln(0,"const char * %s::gets()",getQualifiedName().c_str());
-		out.iprintln(0,"{");
-		if (isString())
-			out.iprintln(1,"return m_value;");
-		else if (isChar())
-		{
-			out.iprintln(1,"static char res[2];");
-			out.iprintln(1,"res[0] = m_value;");
-			out.iprintln(1,"res[1] = 0;");
-			out.iprintln(1,"return res;");
-		}
-		else if (isInteger())
-		{
-			out.iprintln(1,"static char res[10];");
-			out.iprintln(1,"sprintf(res,\"%%d\",m_value);");
-			out.iprintln(1,"return res;");
-		}
-		else if (isfloat())
-		{
-			out.iprintln(1,"static char res[10];");
-			out.iprintln(1,"sprintf(res,\"%%g\",m_value;");
-			out.iprintln(1,"return res;");
-		}
-		out.iprintln(0,"}");
 	}
 }
 
@@ -796,11 +707,6 @@ void xsdRestriction::setCppName(const char * name)
 bool xsdRestriction::isString()
 {
 	return m_base->isString() && getDim() != 1 ;
-}
-
-bool xsdRestriction::isChar()
-{
-	return m_base->isString() && getDim() == 1 ;
 }
 
 bool xsdRestriction::isScalar()
@@ -834,7 +740,6 @@ void xsdList::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		m_hdrimpl = true;
 		if (m_itemtype != NULL)
 		{
-			int d = getDim();
 			out.iprintln(indent,"struct %s",getCppName());
 			out.iprintln(indent++,"{");
 			if (m_itemtype->isLocal())
@@ -848,17 +753,34 @@ void xsdList::GenHeader(CppFile &out,int indent,const char * defaultstr)
 				out.iprintln(indent,"%s()",getCppName());
 				out.iprintln(indent++,"{");
 				out.iprintln(indent,"sets(\"%s\");",defaultstr);
-				out.iprintln(--indent,"};");
+				out.iprintln(--indent,"}");
 			}
-			out.iprintln(indent,    "void sets(const char * str);");
-			out.iprintln(indent,    "const char * gets(const char * str);");
-			if (d > 1)
-			{
-				out.iprintln(indent,"int m_count;");
-				out.iprintln(indent,"%s m_value[%d];",m_itemtype->getCppName(),d);
-			}
-			else
-				out.iprintln(indent,"%s m_value;",m_itemtype->getCppName());
+			out.iprintln(indent,  "void sets(const char * str)");
+			out.iprintln(indent++,"{");
+			out.iprintln(indent,  "m_list.sets(str);");
+			out.iprintln(--indent,"}");
+
+			out.iprintln(indent,  "int count() const");
+			out.iprintln(indent++,"{");
+			out.iprintln(indent,  "return m_list.count();");
+			out.iprintln(--indent,"}");
+
+			out.iprintln(indent,  "const %s & getAt(int pos) const",m_itemtype->getCppName());
+			out.iprintln(indent++,"{");
+			out.iprintln(indent,  "return m_list.getAt(pos);");
+			out.iprintln(--indent,"}");
+
+			out.iprintln(indent,  "void setAt(int pos,const %s & val)",m_itemtype->getCppName());
+			out.iprintln(indent++,"{");
+			out.iprintln(indent,  "m_list.setAt(pos,val);");
+			out.iprintln(--indent,"}");
+
+			out.iprintln(indent,  "xs_string gets() const");
+			out.iprintln(indent++,"{");
+			out.iprintln(indent,  "return m_list.gets();");
+			out.iprintln(--indent,"}");
+
+			out.iprintln(indent,"xs_list<%s> m_list;",m_itemtype->getCppName());
 			out.iprintln(--indent,"};\n");
 		}
 	}
@@ -871,31 +793,11 @@ void xsdList::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	m_cppimpl = true;
 	if (m_itemtype == NULL)
 		m_itemtype = FindType(m_itemtypename);
-	if (m_itemtype->isLocal())
-		m_itemtype->GenImpl(out,st,defaultstr);
-	out.iprintln(0,"void %s::sets(const char * str)",getQualifiedName().c_str());
-	out.iprintln(0,"{");
-	if (getDim() == 1)
-		m_itemtype->GenAssignment(out,1,"m_value","str");
-	else
+	if (m_itemtype != NULL)
 	{
-		/*
-		 *
-		 */
-		int ilen = getDim();
-		out.iprintln(1,"char * s = strdup(str);");
-		out.iprintln(1,"char * p = s;");
-		out.iprintln(1,"m_count = 0;");
-		out.iprintln(1,"char * t = mystrtok(&p,\" \");");
-		out.iprintln(1,"for(int i = 0 ; t != NULL &&  i < %d ; i++)",ilen);
-		out.iprintln(1,"{");
-		m_itemtype->GenAssignment(out,2,"m_value[i]","t");
-		out.iprintln(2,"m_count++;");
-		out.iprintln(2,"t = mystrtok(&p,\" \");");
-		out.iprintln(1,"}");
-		out.iprintln(1,"free(s);");
+		if (m_itemtype->isLocal())
+			m_itemtype->GenImpl(out,st,defaultstr);
 	}
-	out.iprintln(0,"}");
 }
 
 void xsdList::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
@@ -920,62 +822,12 @@ void xsdType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 
 void xsdType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src)
 {
-	if (isInteger())
-	{
-		if (isUnsignedInteger())
-		  out.iprintln(indent,"%s = strtoul(%s,NULL,10);",dest.getlvalue(),src);
-		else
-			out.iprintln(indent,"%s = strtol(%s,NULL,10);",dest.getlvalue(),src);
-	}
-	else if (isString())
-	{
-		out.iprintln(indent,"strcpy(%s,%s);",dest.getlvalue(),src);
-	}
-	else if (isfloat())
-	{
-		if (m_tag == type_double)
-			out.iprintln(indent,"%s = strtod(%s,NULL);",dest.getlvalue(),src);
-		else
-			out.iprintln(indent,"%s = strtof(%s,NULL);",dest.getlvalue(),src);
-	}
-	else if (m_tag == type_boolean)
-	{
-		out.iprintln(indent,"%s = strcmp(%s,\"true\") == 0 ;",dest.getlvalue(),src);
-	}
-	else
-	{
-		out.iprintln(indent,"// Assignement %s = %s not implemented",dest.getlvalue(),src);
-	}
+	out.iprintln(indent,"%s.sets(%s);",dest.getlvalue(),src);
 }
 
 void xsdType::GenAssignment(CppFile & out,int indent,const char * dest,const char * src)
 {
-	if (isInteger())
-	{
-		if (isUnsignedInteger())
-		  out.iprintln(indent,"%s = strtoul(%s,NULL,10);",dest,src);
-		else
-			out.iprintln(indent,"%s = strtol(%s,NULL,10);",dest,src);
-	}
-	else if (isString())
-	{
-		out.iprintln(indent,"strcpy(%s,%s);",dest,src);
-	}
-	else if (isfloat())
-	{
-		if (m_tag == type_double)
-			out.iprintln(indent,"%s = strtod(%s,NULL);",dest,src);
-		else
-			out.iprintln(indent,"%s = strtof(%s,NULL);",dest,src);
-	}
-	else if (m_tag == type_boolean)
-	{
-		out.iprintln(indent,"%s = strcmp(%s,\"true\") == 0 ;",dest,src);
-	}
-	else
-	{
-		out.iprintln(indent,"// Assignement %s = %s not implemented",dest,src);
-	}
+  out.iprintln(indent,"%s.sets(%s);",dest,src);
 }
 
 void xsdComplexType::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)

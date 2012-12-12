@@ -5,11 +5,14 @@
  *      Author: dorwig
  */
 
+#include <string.h>
 #include "symtab.h"
 
 bool compare_by_name(Symbol * s1,Symbol * s2)
 {
-	return s1->m_cname < s2->m_cname;
+	const char * str1 ;
+	const char * str2 ;
+	return s1->m_name < s2->m_name;
 }
 
 Symbol * Symtab::find(const char * name)
