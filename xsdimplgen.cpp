@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <assert.h>
 #include <libxml2/libxml/parser.h>
 #include "xsdclassgen.h"
 
@@ -38,6 +39,14 @@ void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	std::list<xsdElement*>::iterator ei;
 	out.iprintln(indent,"struct %s",getCppName());
 	out.iprintln(indent++,"{");
+	/*
+	 * Constructor
+	 */
+	out.iprintln(indent,"%s()",getCppName());
+	out.iprintln(indent++,"{");
+	m_elements.GenInit(out,indent);
+	out.iprintln(--indent,"}");
+
 	out.iprintln(indent,"void Parse(xmlNodePtr node);");
 	m_parent->GenAttrHeader(out,indent);
 	m_elements.GenHeader(out,indent);
@@ -170,10 +179,18 @@ void xsdElement::GenHeader(CppFile &out,int indent)
 		int len = m_maxOccurs;
 		if (len > 1)
 		{
-			out.iprintln(indent,"%s %s %s[%d];",m_type->getCppName(),m_isChoice ? "*" : "",getCppName(),len);
+			if (isPtr())
+				out.iprintln(indent,"%s * %s[%d];",m_type->getCppName(),getCppName(),len);
+			else
+				out.iprintln(indent,"%s %s[%d];",m_type->getCppName(),getCppName(),len);
 		}
 		else
-			out.iprintln(indent,"%s %s %s;",m_type->getCppName(),m_isChoice ? "*" : " ",getCppName());
+		{
+			if (isPtr())
+				out.iprintln(indent,"%s * %s;",m_type->getCppName(),getCppName());
+			else
+				out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
+		}
 	}
 }
 
@@ -197,7 +214,11 @@ void xsdElement::GenLocal(CppFile & out,Symtab & st)
 
 void xsdElement::GenInit(CppFile & out,int indent)
 {
-	if (m_type->isScalar())
+	if (isPtr())
+	{
+		out.iprintln(indent,"%s = NULL;",getCppName());
+	}
+	else if (m_type->isScalar())
 	{
 		if (m_type->isInteger() || m_type->isChar())
 			out.iprintln(indent,"%s = 0;",getCppName());
@@ -258,7 +279,7 @@ void xsdAttribute::GenHeader(CppFile & out,int indent)
 	if (m_type != NULL)
 	{
 		if (m_fixed.empty())
-			out.iprintln(indent,"%s %s;",m_type->getCppName(),m_cname.c_str());
+			out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
 		else
 		{
 			out.iprintln(indent,"char %s[%d+1];",getCppName(),m_fixed.size());
@@ -281,6 +302,12 @@ void xsdTypeList::GenHeader(CppFile & out,int indent,const char * defaultstr,boo
 	{
 		(*ti)->GenHeader(out,indent,defaultstr);
 	}
+}
+
+xsdType* xsdTypeList::Find(const char* name)
+{
+	assert(false);
+	return NULL;
 }
 
 void xsdTypeList::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
@@ -311,24 +338,9 @@ void xsdType::GenHeader(CppFile & out,int indent,const char * defaultstr)
 
 }
 
-void xsdAll::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
+void GenParserChildLoop(CppFile & out,Symtab & st,xsdElementList & elements,xsdTypeList & types,const char * defaultstr)
 {
-	if (m_cppimpl)
-		return ;
-	m_cppimpl = true;
-}
-
-void xsdAll::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
-{
-
-}
-
-void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
-{
-	if (m_cppimpl)
-		return ;
-	m_cppimpl = true;
-	for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
 	{
 		xsdElement * e = *ei ;
 		if (e->m_maxOccurs > 1)
@@ -341,7 +353,7 @@ void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	out.iprintln(3,"symbols kw = Lookup(child->name);");
 	out.iprintln(3,"switch(kw)");
 	out.iprintln(3,"{");
-	for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
 	{
 		xsdElement * e = *ei ;
 		Symbol * s = st.find(e->m_name.c_str());
@@ -354,20 +366,17 @@ void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 				if (e->m_maxOccurs > 1)
 				{
 					out.iprintln(5,"if (%s < %d)",e->getIndexVar(),e->m_maxOccurs);
-					m += "[";
-					m += e->getIndexVar();
-					m += "++]";
-					e->m_type->GenAssignment(out,6,m.c_str(),"getContent(child)");
+					e->m_type->GenAssignment(out,6,*e,"getContent(child)");
 				}
 				else
 				{
-					e->m_type->GenAssignment(out,5,m.c_str(),"getContent(child)");
+					e->m_type->GenAssignment(out,5,*e,"getContent(child)");
 				}
 			}
 			out.iprintln(4,"break;");
 		}
 	}
-	for (typeIterator ti = m_types.begin() ; ti != m_types.end() ; ti++)
+	for (typeIterator ti = types.begin() ; ti != types.end() ; ti++)
 	{
 		xsdType * type = *ti ;
 		type->GenImpl(out,st,defaultstr);
@@ -377,6 +386,29 @@ void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	out.iprintln(3,"}");
 	out.iprintln(2,"}");
 	out.iprintln(1,"}");
+}
+
+void xsdAll::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
+{
+	xsdTypeList lst ;
+	if (m_cppimpl)
+		return ;
+	m_cppimpl = true;
+	GenParserChildLoop(out,st,m_elements,lst,defaultstr);
+}
+
+void xsdAll::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
+{
+	m_elements.GenLocal(out,st);
+}
+
+
+void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
+{
+	if (m_cppimpl)
+		return ;
+	m_cppimpl = true;
+	GenParserChildLoop(out,st,m_elements,m_types,defaultstr);
 }
 
 void xsdSequence::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
@@ -438,7 +470,7 @@ void xsdSimpleType::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
 
 }
 
-void xsdSimpleType::GenAssignment(CppFile & out,int indent,const char * leftside,const char * rightside)
+void xsdSimpleType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & leftside,const char * rightside)
 {
 	if (m_rest != NULL)
 		m_rest->GenAssignment(out,indent,leftside,rightside);
@@ -460,6 +492,11 @@ void xsdSimpleContent::GenImpl(CppFile & out,Symtab & st,const char * defaultstr
 		return ;
 	m_cppimpl = true;
 
+}
+
+bool xsdSimpleContent::CheckCycle(xsdElement* elem)
+{
+	return false;
 }
 
 void xsdSimpleContent::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
@@ -557,9 +594,9 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 }
 
 
-void xsdRestriction::GenAssignment(CppFile & out,int indent,const char * dest,const char * src)
+void xsdRestriction::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src)
 {
-	out.iprintln(indent,"%s.sets(%s);",dest,src);
+	out.iprintln(indent,"%s.sets(%s);",dest.getlvalue(),src);
 }
 
 void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
@@ -662,6 +699,7 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 
 void xsdRestriction::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 {
+	printf("%s %s\n",__FUNCTION__,getCppName());
 	if (m_cppimpl)
 		return ;
 	m_cppimpl = true;
@@ -865,9 +903,9 @@ void xsdList::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
 
 }
 
-void xsdList::GenAssignment(CppFile & out,int indent,const char * dest,const char * src)
+void xsdList::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src)
 {
-	out.iprintln(indent,"%s.sets(%s);",dest,src);
+	out.iprintln(indent,"%ssets(%s);",dest.getlvalue(),src);
 }
 
 void xsdList::setCppName(const char * name)
@@ -878,6 +916,36 @@ void xsdList::setCppName(const char * name)
 void xsdType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 {
 
+}
+
+void xsdType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src)
+{
+	if (isInteger())
+	{
+		if (isUnsignedInteger())
+		  out.iprintln(indent,"%s = strtoul(%s,NULL,10);",dest.getlvalue(),src);
+		else
+			out.iprintln(indent,"%s = strtol(%s,NULL,10);",dest.getlvalue(),src);
+	}
+	else if (isString())
+	{
+		out.iprintln(indent,"strcpy(%s,%s);",dest.getlvalue(),src);
+	}
+	else if (isfloat())
+	{
+		if (m_tag == type_double)
+			out.iprintln(indent,"%s = strtod(%s,NULL);",dest.getlvalue(),src);
+		else
+			out.iprintln(indent,"%s = strtof(%s,NULL);",dest.getlvalue(),src);
+	}
+	else if (m_tag == type_boolean)
+	{
+		out.iprintln(indent,"%s = strcmp(%s,\"true\") == 0 ;",dest.getlvalue(),src);
+	}
+	else
+	{
+		out.iprintln(indent,"// Assignement %s = %s not implemented",dest.getlvalue(),src);
+	}
 }
 
 void xsdType::GenAssignment(CppFile & out,int indent,const char * dest,const char * src)
@@ -900,6 +968,10 @@ void xsdType::GenAssignment(CppFile & out,int indent,const char * dest,const cha
 		else
 			out.iprintln(indent,"%s = strtof(%s,NULL);",dest,src);
 	}
+	else if (m_tag == type_boolean)
+	{
+		out.iprintln(indent,"%s = strcmp(%s,\"true\") == 0 ;",dest,src);
+	}
 	else
 	{
 		out.iprintln(indent,"// Assignement %s = %s not implemented",dest,src);
@@ -911,6 +983,34 @@ void xsdComplexType::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
 	m_type->GenLocal(out,st,defaultstr);
 }
 
+void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes,const char * defaultstr)
+{
+	if (!attributes.empty())
+	{
+		out.iprintln(1,"for_each_attr(attr,node)");
+		out.iprintln(1,"{");
+		out.iprintln(2,"symbols kw;");
+		out.iprintln(2,"kw=Lookup(attr->name);");
+		out.iprintln(2,"switch(kw)");
+		out.iprintln(2,"{");
+		for (attrIterator ai = attributes.begin() ; ai != attributes.end() ; ai++)
+		{
+			xsdAttribute * a = *ai ;
+			Symbol * s = st.find(a->m_name.c_str());
+			if (s != NULL)
+			{
+				out.iprintln(3,"case sy_%s:",s->m_cname.c_str());
+				a->m_type->GenAssignment(out,4,*a,"getContent(attr)");
+				out.iprintln(3,"break;");
+			}
+		}
+		out.iprintln(3,"default:");
+		out.iprintln(3,"break;");
+		out.iprintln(2,"}");
+		out.iprintln(1,"}");
+  }
+}
+
 void xsdComplexType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 {
 	if (m_cppimpl)
@@ -920,30 +1020,7 @@ void xsdComplexType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	out.iprintln(0,"/*\n * complexType %s\n*/",getName());
 	out.iprintln(0,"void %s::Parse(xmlNodePtr node)",getQualifiedName().c_str());
 	out.iprintln(0,"{");
-	if (!m_attributes.empty())
-	{
-		out.iprintln(1,"for_each_attr(attr,node)");
-		out.iprintln(1,"{");
-		out.iprintln(2,"symbols kw;");
-		out.iprintln(2,"kw=Lookup(attr->name);");
-		out.iprintln(2,"switch(kw)");
-		out.iprintln(2,"{");
-		for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
-		{
-			xsdAttribute * a = *ai ;
-			Symbol * s = st.find(a->m_name.c_str());
-			if (s != NULL)
-			{
-				out.iprintln(3,"case sy_%s:",s->m_cname.c_str());
-				a->m_type->GenAssignment(out,4,a->getCppName(),"getContent(attr)");
-				out.iprintln(3,"break;");
-			}
-		}
-		out.iprintln(3,"default:");
-		out.iprintln(3,"break;");
-		out.iprintln(2,"}");
-		out.iprintln(1,"}");
-  }
+	GenParserAttrLoop(out,st,m_attributes,defaultstr);
 	if (m_type != NULL)
 	{
 		m_type->GenImpl(out,st,defaultstr);
@@ -952,8 +1029,17 @@ void xsdComplexType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	out.println();
 }
 
-void xsdComplexType::GenAssignment(CppFile & out,int indent,const char * dest,const char * src)
+void xsdComplexType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src)
 {
-	out.iprintln(indent,"%s.Parse(child);",dest);
+	if (dest.isPtr())
+		out.iprintln(indent,"%s = new %s;",dest.getCppName(),dest.m_type->getCppName());
+	out.iprintln(indent,"%s.Parse(child);",dest.getlvalue());
 }
+
+bool xsdEnum::CheckCycle(xsdElement* elem)
+{
+	return false;
+}
+
+
 
