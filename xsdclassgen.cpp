@@ -411,7 +411,7 @@ xsdAttribute   * ParseAttribute(xmlNodePtr node,xsdType * parent,Symtab & st)
 	const char * xsdname = "";
 	const char * xsddefault = "";
 	const char * xsdfixed = "" ;
-	xsdType * xsdtype = NULL;
+	xsdType    * xsdtype = NULL;
 	xsdAttribute::eUse use = xsdAttribute::eUse_Optional;
 	for_each_attr(attr,node)
 	{
@@ -428,7 +428,9 @@ xsdAttribute   * ParseAttribute(xmlNodePtr node,xsdType * parent,Symtab & st)
 			break ;
 
 			case	xsd_type:
+			{
 				xsdtype = FindType(getContent(attr->children));
+			}
 			break ;
 
 			case	xsd_fixed:
@@ -1284,6 +1286,7 @@ const char * xsdType::getCppName()
 		case	type_boolean:				name = "bool";					break ;
 		case  type_string:        name = "char";					break ;
 		case	type_integer:       name = "int";						break ;
+		case  type_all:
 		case	type_enum:
 		case	type_restriction:
 		case	type_list:
@@ -1461,11 +1464,13 @@ void xsdRestriction::CalcDependency(xsdTypeList & list)
 		m_simple->CalcDependency(list);
 }
 
+#if 1
 void xsdAttribute::CalcDependency(xsdTypeList & list)
 {
 	if (m_type != NULL)
 		m_type->CalcDependency(list);
 }
+#endif
 
 void xsdExtension::CalcDependency(xsdTypeList & list)
 {
@@ -1558,7 +1563,7 @@ void xsdComplexType::CalcDependency(xsdTypeList & list)
 }
 bool xsdComplexType::CheckCycle(xsdElement * elem)
 {
-
+	return m_type->CheckCycle(elem);
 }
 
 void xsdSimpleType::CalcDependency(xsdTypeList & list)
@@ -1583,46 +1588,6 @@ void xsdSimpleType::CalcDependency(xsdTypeList & list)
 	}
 }
 
-void CheckCycle(xsdElement * e,xsdType * t)
-{
-	switch(t->m_tag)
-	{
-		case	type_complex:
-		{
-			xsdComplexType * ct = (xsdComplexType*)t ;
-			CheckCycle(e,ct->m_type);
-		}
-		break ;
-		case	type_sequence:
-		{
-			xsdSequence * st = (xsdSequence*)t ;
-			for (elementIterator ei = st->m_elements.begin() ; ei != st->m_elements.end() ; ei++)
-			{
-				if (e == *ei)
-				{
-					printf("%s has cyclic type ref\n",e->getName());
-				}
-			}
-		}
-		break ;
-
-		case	type_all:
-		{
-			xsdAll * st = (xsdAll*)t ;
-			for (elementIterator ei = st->m_elements.begin() ; ei != st->m_elements.end() ; ei++)
-			{
-				if (e == *ei)
-				{
-					printf("%s has cyclic type ref\n",e->getName());
-				}
-			}
-		}
-		break ;
-
-		case	type_choice:
-		break ;
-	}
-}
 
 void xsdElement::CalcDependency(xsdTypeList & list)
 {
@@ -1655,8 +1620,11 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 		}
 		else
 		{
-			CheckCycle(this,m_type);
-			m_type->CalcDependency(m_tns->m_deplist);
+			m_isCyclic = m_type->CheckCycle(this);
+			if (!m_isCyclic)
+				m_type->CalcDependency(m_tns->m_deplist);
+			else
+				printf("%s cyclic ref to %s\n",getName(),m_type->getName());
 		}
 	}
 }
@@ -1682,15 +1650,6 @@ bool xsdElementList::CheckCycle(xsdElement * elem)
 }
 
 
-xsdType * createDateTime()
-{
-	xsdSimpleType * st = new xsdSimpleType("xs:dateTime","",NULL);
-	xsdRestriction *r = new xsdRestriction(st);
-	r->m_base = FindType("xs:string");
-	r->m_maxLength=20;
-	st->m_rest= r ;
-	return st ;
-}
 
 int main(int argc, char * argv[])
 {
@@ -1814,7 +1773,7 @@ int main(int argc, char * argv[])
 		AddType(new xsdType("xs:unsignedShort",type_unsignedShort,NULL,true));
 		AddType(new xsdType("xs:unsignedByte",type_unsignedByte,NULL,true));
 		AddType(new xsdType("xs:unsignedPositiveInteger",type_positiveInteger,NULL,true));
-		AddType(createDateTime());
+		AddType(new xsdType("xs:dateTime",type_dateTime,NULL,true));
 		Symtab symtab ;
 		for_each_child(child,doc)
 		{
@@ -1874,3 +1833,26 @@ int main(int argc, char * argv[])
 	}
 	return 0 ;
 }
+
+bool xsdGroup::CheckCycle(xsdElement* elem)
+{
+	return m_type->CheckCycle(elem);
+}
+
+void xsdTypeList::GenLocal(CppFile& out, Symtab& st, const char* defaultstr)
+{
+}
+
+void xsdAttrList::GenHeader(CppFile& out, int indent, const char* defaultstr)
+{
+}
+
+bool xsdSequence::CheckCycle(xsdElement* elem)
+{
+	return m_elements.CheckCycle(elem);
+}
+
+void xsdGroupList::GenHeader(CppFile& out, int indent, const char* defaultstr)
+{
+}
+
