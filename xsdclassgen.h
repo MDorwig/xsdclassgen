@@ -292,7 +292,6 @@ public:
 	virtual bool  isfloat();
 	virtual bool  isString();
 	virtual bool  isScalar();
-	virtual bool  isChar();
 	virtual int   getDim() { return 1 ;}
 
 	const char * getName()
@@ -446,7 +445,6 @@ public:
 	bool isInteger() { return getDim() == 1 && m_base->isInteger();}
 	bool isfloat()   { return getDim() == 1 && m_base->isfloat();}
 	bool isString();
-	bool isChar();
 	bool isScalar();
 	int  getDim();
 	const char * getReturnType();

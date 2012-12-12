@@ -475,6 +475,7 @@ xsdAttribute   * ParseAttribute(xmlNodePtr node,xsdType * parent,Symtab & st)
 			}
 		}
 	}
+	st.m_hasAttributes = true ;
 	xsdAttribute * xsdattr = new xsdAttribute(xsdname,xsddefault,xsdfixed,use,xsdtype);
 	return xsdattr;
 }
@@ -486,8 +487,8 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 	const char * xsdname     = NULL;
 	const char * xsddefault  = NULL;
 	xsdTypename* xsdtypename = NULL;
-	int minOccurs = 0 ;
-	int maxOccurs = 0 ;
+	int minOccurs = 1 ;
+	int maxOccurs = 1 ;
 	bool isChoice = parent != NULL && parent->m_tag == type_choice;
 	for_each_attr(attr,element)
 	{
@@ -508,7 +509,10 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			break ;
 
 			case	xsd_maxOccurs:
-				maxOccurs = strtol(getContent(attr->children),NULL,10);
+				if (strcmp(getContent(attr->children),"unbounded") == 0)
+					maxOccurs = 0 ;
+				else
+					maxOccurs = strtol(getContent(attr->children),NULL,10);
 			break ;
 
 			case	xsd_default:
@@ -1270,22 +1274,23 @@ const char * xsdType::getCppName()
 	const char * name ;
 	switch(m_tag)
 	{
-		case  type_float:					name = "float";					break ;
-		case	type_double:				name = "double";				break ;
-		case	type_unsignedByte: 	name = "unsigned char";	break ;
-		case  type_unsignedShort:	name = "unsigned short";break ;
-		case  type_nonNegativeInteger:
-		case	type_positiveInteger:
-		case	type_unsignedInt: 	name = "unsigned int";	break ;
-		case	type_unsignedLong:  name = "unsigned long"; break ;
-		case	type_byte:    			name = "char";					break ;
-		case	type_short:					name = "short";					break ;
-		case	type_negativeInteger:
-		case	type_int:						name = "int";						break ;
-		case	type_long:    			name = "long";					break ;
-		case	type_boolean:				name = "bool";					break ;
-		case  type_string:        name = "char";					break ;
-		case	type_integer:       name = "int";						break ;
+		case  type_float:					     name = "xs_float";								break ;
+		case	type_double:				     name = "xs_double";							break ;
+		case	type_unsignedByte: 	     name = "xs_unsignedByte";				break ;
+		case  type_unsignedShort:	     name = "xs_unsignedShort";				break ;
+		case  type_nonNegativeInteger: name = "xs_nonNegativeInteger"; 	break ;
+		case	type_positiveInteger:    name = "xs_positiveInteger";    	break ;
+		case	type_unsignedInt: 	     name = "xs_unsignedInt";	       	break ;
+		case	type_unsignedLong:       name = "xs_unsignedLong";    		break ;
+		case	type_byte:    			     name = "xs_byte";				    		break ;
+		case	type_short:					     name = "xs_short";			    			break ;
+		case	type_negativeInteger:		 name = "xs_negativeInteger";     break ;
+		case	type_int:						     name = "xs_int";									break ;
+		case	type_long:    			     name = "xs_long";								break ;
+		case	type_boolean:				     name = "xs_bool";								break ;
+		case  type_string:             name = "xs_string";							break ;
+		case	type_integer:            name = "xs_integer"	;						break ;
+
 		case  type_all:
 		case	type_enum:
 		case	type_restriction:
@@ -1299,6 +1304,7 @@ const char * xsdType::getCppName()
 			else
 			  name = m_cname.c_str();
 		break ;
+
 		default:               		name = m_cname.c_str();	break ;
 	}
 	return name ;
@@ -1376,11 +1382,6 @@ bool  xsdType::isScalar()
 bool  xsdType::isString()
 {
 	return m_tag == type_string;
-}
-
-bool xsdType::isChar()
-{
-	return m_tag == type_string && getDim() == 1 ;
 }
 
 std::string xsdType::getQualifiedName()
@@ -1748,7 +1749,9 @@ int main(int argc, char * argv[])
 		hfile.println("#include <stdio.h>");
 		hfile.println("#include <stdlib.h>");
 		hfile.println("#include <string.h>");
-		hfile.println("#include <libxml/parser.h>\n");
+		hfile.println("#include <libxml/parser.h>");
+		hfile.println("#include \"xsdtypes.h\"");
+		hfile.println();
 		cppfile.println("#include \"%s\"",hfileinclude.c_str());
 		cppfile.println();
 		cppfile.println("#define for_each_child(child,node) for (xmlNodePtr child = node->children   ; child != NULL ; child = child->next)");

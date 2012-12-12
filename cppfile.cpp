@@ -123,13 +123,16 @@ void CppFile::GenSymtab(Symtab & symtab)
 	println("  return sy;");
 	println("}\n");
 
-	println("static const char * getContent(xmlAttrPtr attr)\n"
-			    "{\n"
-				  "  const char * content = \"\";\n"
-			    "  if (attr->children != NULL)\n"
-			    "    content = (const char*)attr->children->content;\n"
-			    "  return content;\n"
-					"}\n");
+	if (symtab.m_hasAttributes)
+	{
+		println("static const char * getContent(xmlAttrPtr attr)\n"
+						"{\n"
+						"  const char * content = \"\";\n"
+						"  if (attr->children != NULL)\n"
+						"    content = (const char*)attr->children->content;\n"
+						"  return content;\n"
+						"}\n");
+	}
 	println("static const char * getContent(xmlNodePtr child)\n"
 			    "{\n"
 				  "  const char * content = \"\";\n"
@@ -137,7 +140,7 @@ void CppFile::GenSymtab(Symtab & symtab)
 			    "    content = (const char*)child->children->content;\n"
 			    "  return content;\n"
 					"}\n\n");
-
+#if 0
 	println("static char * mystrtok(char ** cp,const char * delim)\n"
 	        "{\n"
 				  "  char * start = *cp;\n"
@@ -152,6 +155,6 @@ void CppFile::GenSymtab(Symtab & symtab)
 		      "  *cp = end ;\n"
 		      "  return start ;\n"
 	        "}\n");
-
+#endif
 }
 
