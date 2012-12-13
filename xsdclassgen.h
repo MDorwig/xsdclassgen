@@ -24,9 +24,6 @@ class xsdNamespace;
 extern xsdNamespace * targetNamespace;
 typedef std::list<xsdType*>::iterator typeIterator;
 
-typedef std::list<xsdChoice*> xsdChoiceList ;
-typedef xsdChoiceList::iterator choiceIterator ;
-
 std::string MakeIdentifier(const char * prefix,const char * name);
 
 class xsdTypename // für vorwärtsdeclarationen
@@ -590,6 +587,7 @@ public:
 
 typedef xsdSequenceList::iterator sequenceIterator ;
 
+
 class xsdChoice : public xsdType
 {
 public:
@@ -597,6 +595,7 @@ public:
 	{
 		m_minOccurs = min ;
 		m_maxOccurs = max ;
+		m_seq       = 0;
 	}
 
 	void CalcDependency(xsdTypeList & list);
@@ -609,11 +608,12 @@ public:
 
 	int            m_minOccurs;
 	int            m_maxOccurs;
+	int            m_seq ;
 	xsdElementList m_elements;
 	xsdGroupList   m_groups;
-	xsdChoiceList  m_choises;
 	xsdSequenceList m_sequences;
 };
+
 
 class xsdAll : public xsdType
 {
@@ -634,7 +634,7 @@ public:
 class xsdComplexType : public xsdType
 {
 public:
-	xsdComplexType(const char * name,const char * elemname,typetag tag,xsdType * parent) : xsdType(name,tag,parent)
+	xsdComplexType(const char * name,const char * elemname,xsdType * parent) : xsdType(name,type_complex,parent)
 	{
 		if (m_name.empty())
 		{
@@ -660,6 +660,7 @@ public:
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src);
+	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	bool CheckCycle(xsdElement * elem);
 
 	xsdType *   m_type;
@@ -703,6 +704,16 @@ public:
 		return i.c_str() ;
 	}
 
+	bool isArray()
+	{
+		return m_maxOccurs != 1 ;
+	}
+
+	bool isUnbounded()
+	{
+		return m_maxOccurs == 0 ;
+	}
+
 	bool hasDefault()
 	{
 		return !m_default.empty();
@@ -719,6 +730,8 @@ public:
 		if (isPtr())
 		{
 			lval = "(*";
+			if (m_isChoice)
+				lval += "m_choice.";
 			lval += getCppName();
 			lval += ")";
 		}
@@ -726,7 +739,7 @@ public:
 		{
 			lval = getCppName();
 		}
-		if (m_maxOccurs > 1)
+		if (isArray())
 		{
 			lval += "[" ;
 			lval += getIndexVar();
@@ -746,8 +759,8 @@ public:
 	xsdTypename * m_typename;
 	xsdNamespace* m_tns ;
 	xsdTypeList m_deplist;
-	int         m_minOccurs;
-	int         m_maxOccurs;
+	unsigned		m_minOccurs;
+	unsigned   	m_maxOccurs;
 	bool        m_isChoice;
 	bool        m_isCyclic;
 };
