@@ -84,7 +84,8 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 	if (!m_hdrimpl)
 	{
 		m_hdrimpl = true ;
-		out.iprintln(indent,   "struct xs_choice");
+		const char * choicename = "xs_choice";
+		out.iprintln(indent,   "struct %s",choicename);
 		out.iprintln(indent++,"{");
 		/*
 		 * generate an enum to determine the taken choice
@@ -103,7 +104,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		/*
 		 * generate constructor to initialize the choices to NULL
 		 */
-		out.iprintln(indent,"xs_choice()");
+		out.iprintln(indent,"%s()",choicename);
 		out.iprintln(indent++,"{");
 		out.iprintln(indent,"m_selected = e_none_selected;");
 		for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
@@ -116,7 +117,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		/*
 		 * generate the destructor to delete the selected choice
 		 */
-		out.iprintln(indent,"~xs_choice()");
+		out.iprintln(indent,"~%s()",choicename);
 		out.iprintln(indent++,"{");
 		out.iprintln(indent,  "switch(m_selected)");
 		out.iprintln(indent++,"{");
@@ -131,7 +132,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 
 		out.iprintln(--indent,"}");
 
-		out.iprintln(--indent,"} m_choice;");
+		out.iprintln(--indent,"} m_%s;",choicename);
 	}
 }
 
@@ -176,19 +177,19 @@ void xsdElement::GenHeader(CppFile &out,int indent)
 	}
 	else
 	{
-		if (m_maxOccurs == 1)
-		{
-			if (isPtr())
-				out.iprintln(indent,"%s * %s;",m_type->getCppName(),getCppName());
-			else
-				out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
-		}
-		else
+		if (isArray())
 		{
 			if (isPtr())
 				out.iprintln(indent,"xs_array<%s> * %s;",m_type->getCppName(),getCppName());
 			else
 				out.iprintln(indent,"xs_array<%s> %s;",m_type->getCppName(),getCppName());
+		}
+		else
+		{
+			if (isPtr())
+				out.iprintln(indent,"%s * %s;",m_type->getCppName(),getCppName());
+			else
+				out.iprintln(indent,"%s %s;",m_type->getCppName(),getCppName());
 		}
 	}
 }
@@ -326,7 +327,7 @@ void GenParserChildLoop(CppFile & out,Symtab & st,xsdElementList & elements,xsdT
 	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
 	{
 		xsdElement * e = *ei ;
-		if (e->m_maxOccurs > 1)
+		if (e->isArray() && !e->isUnbounded())
 			out.iprintln(1,"int %s = 0;",e->getIndexVar());
 	}
 	out.iprintln(1,"for_each_child(child,node)");
@@ -345,15 +346,24 @@ void GenParserChildLoop(CppFile & out,Symtab & st,xsdElementList & elements,xsdT
 			out.iprintln(4,"case sy_%s:",s->m_cname.c_str());
 			if (e->m_type != NULL)
 			{
-				std::string m = e->getCppName();
-				if (e->m_maxOccurs > 1)
+				int indent = 5 ;
+				const char * typname = e->m_type->getCppName();
+				if (e->isArray())
 				{
-					out.iprintln(5,"if (%s < %d)",e->getIndexVar(),e->m_maxOccurs);
-					e->m_type->GenAssignment(out,6,*e,"getContent(child)");
+					if (!e->isUnbounded())
+						out.iprintln(indent,"if (%s < %d)",e->getIndexVar(),e->m_maxOccurs);
+					out.iprintln(indent++,"{");
+					out.iprintln(indent,  "%s tmp;",typname);
+					e->m_type->GenAssignment(out,indent,"tmp","getContent(child)");
+					if (e->isPtr())
+						out.iprintln(indent,"%s->add(tmp);",e->getCppName());
+					else
+						out.iprintln(indent,"%s.add(tmp);",e->getCppName());
+					out.iprintln(--indent,"}");
 				}
 				else
 				{
-					e->m_type->GenAssignment(out,5,*e,"getContent(child)");
+					e->m_type->GenAssignment(out,indent,*e,"getContent(child)");
 				}
 			}
 			out.iprintln(4,"break;");
@@ -411,11 +421,30 @@ void xsdChoice::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 		Symbol * s = st.find(elem->m_name.c_str());
 		if (s != NULL)
 		{
-			out.iprintln(4,"case sy_%s:",s->m_cname.c_str());
-			out.iprintln(5,"m_choice.m_selected = xs_choice::%s;",elem->m_choice_selector.c_str());;
-			out.iprintln(5,"m_choice.%s = new %s;",elem->getCppName(),elem->m_type->getCppName());
-			out.iprintln(5,"m_choice.%s->Parse(child);",elem->getCppName());
-			out.iprintln(4,"break;");
+			int id = 4 ;
+			out.iprintln(id,"case sy_%s:",s->m_cname.c_str());
+			out.iprintln(id++,"{");
+			out.iprintln(id,"m_choice.m_selected = xs_choice::%s;",elem->m_choice_selector.c_str());;
+			if (elem->isArray())
+			{
+				out.iprintln(id,"%s tmp;",elem->m_type->getCppName());
+				elem->m_type->GenAssignment(out,id,"tmp","getContent(child)");
+				if (elem->isPtr())
+				{
+					out.iprintln(id,"if (m_choice.%s == NULL)",elem->getCppName());
+					out.iprintln(id+1,"m_choice.%s = new xs_array<%s>;",elem->getCppName(),elem->m_type->getCppName());
+					out.iprintln(id,"m_choice.%s->add(tmp);",elem->getCppName());
+				}
+				else
+					out.iprintln(id,"%m_choice.%s.add(tmp);",elem->getCppName());
+			}
+			else
+			{
+				out.iprintln(id,"m_choice.%s = new %s;",elem->getCppName(),elem->m_type->getCppName());
+				elem->m_type->GenAssignment(out,id,*elem,"getContent(child)");
+			}
+			out.iprintln(--id,"}");
+			out.iprintln(id,"break;");
 		}
 	}
 }
@@ -637,14 +666,14 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 			 */
 			out.iprintln(indent,"void set(const %s & val)",getReturnType());
 			out.iprintln(indent++,"{");
-			out.iprintln(indent,"m_value.set(val);");
+			out.iprintln(indent,"m_value = val;");
 			out.iprintln(--indent,"}");
 
 			if (!m_base->isString())
 			{
 				out.iprintln(indent,"const %s & get() const",getReturnType());
 				out.iprintln(indent++,"{");
-				out.iprintln(indent,"  return m_value.get();");
+				out.iprintln(indent,"  return m_value;");
 				out.iprintln(--indent,"}");
 			}
 			/*
@@ -886,6 +915,11 @@ void xsdComplexType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & de
 	if (dest.isPtr())
 		out.iprintln(indent,"%s = new %s;",dest.getCppName(),dest.m_type->getCppName());
 	out.iprintln(indent,"%s.Parse(child);",dest.getlvalue());
+}
+
+void xsdComplexType::GenAssignment(CppFile & out,int indent,const char * dest,const char * src)
+{
+	out.iprintln(indent,"%s.Parse(child);",dest);
 }
 
 bool xsdEnum::CheckCycle(xsdElement* elem)

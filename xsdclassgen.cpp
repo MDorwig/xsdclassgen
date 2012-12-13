@@ -580,7 +580,16 @@ xsdSequence * ParseSequence(xmlNodePtr sequence,xsdType * parent,Symtab & st)
 					xsdseq->m_types.push_back(ParseChoice(child,xsdseq,st));
 				break ;
 				case  xsd_sequence:
-					xsdseq->m_types.push_back(ParseSequence(child,xsdseq,st));
+				{
+					xsdSequence * s = ParseSequence(child,xsdseq,st);
+					while (!s->m_elements.empty())
+					{
+						xsdElement * e = *s->m_elements.begin() ;
+						xsdseq->m_elements.push_back(e);
+						s->m_elements.remove(e);
+					}
+					delete s ;
+				}
 				break ;
 
 				case	xsd_annotation:
@@ -679,10 +688,21 @@ xsdGroup  * ParseGroup(xmlNodePtr group,xsdType * parent,Symtab & st)
 	return xsdgroup;
 }
 
+xsdElement * MakeAnonymousElement(xsdSequence * seq,xsdType * parent,int min,int max,int cnt)
+{
+	char seqname[30];
+	sprintf(seqname,"anonym_%d",cnt);
+	xsdComplexType * t = new xsdComplexType("",seqname,parent);
+	t->m_type = seq ;
+	seq->m_parent = t ;
+	return new xsdElement(seqname,new xsdTypename(""),t,min,max,true,"");
+}
+
 xsdChoice * ParseChoice(xmlNodePtr choice,xsdType * parent,Symtab & st)
 {
 	xsd_keyword kw ;
 	int min = 0,max = 0 ;
+	int anonym_cnt = 0 ;
 	for_each_attr(attr,choice)
 	{
 		kw = Lookup(attr->name);
@@ -718,11 +738,37 @@ xsdChoice * ParseChoice(xmlNodePtr choice,xsdType * parent,Symtab & st)
 
 
 				case	xsd_choice:
-					xsdchoice->m_choises.push_back(ParseChoice(child,xsdchoice,st));
+				{
+					xsdChoice * c = ParseChoice(child,xsdchoice,st);
+					/*
+					 * alle Elemente der untergeorneten choice in diese choice übertragen
+					 */
+					while (!c->m_elements.empty())
+					{
+						xsdElement * elem = *c->m_elements.begin();
+						xsdchoice->m_elements.push_back(elem);
+						c->m_elements.remove(elem);
+					}
+					/*
+					 * elemente für annonyme sequencen erstellen
+					 */
+					while (!c->m_sequences.empty())
+					{
+						xsdSequence * s = *c->m_sequences.begin() ;
+						xsdElement * e = MakeAnonymousElement(s,xsdchoice,min,max,++anonym_cnt);
+						xsdchoice->m_elements.push_back(e);
+						c->m_sequences.remove(s);
+					}
+					delete c ;
+				}
 				break ;
 
 				case	xsd_sequence:
-					xsdchoice->m_sequences.push_back(ParseSequence(child,xsdchoice,st));
+				{
+					xsdSequence * s = ParseSequence(child,xsdchoice,st);
+					xsdElement * e = MakeAnonymousElement(s,xsdchoice,min,max,++anonym_cnt);
+					xsdchoice->m_elements.push_back(e);
+				}
 				break ;
 
 				case	xsd_group:
@@ -831,7 +877,7 @@ xsdComplexType * ParseComplexType(xmlNodePtr type,const char * elemname,xsdType 
 			break ;
 		}
 	}
-	xsdComplexType * newtype = new xsdComplexType(xsdtypename,elemname,type_complex,parent);
+	xsdComplexType * newtype = new xsdComplexType(xsdtypename,elemname,parent);
 	for_each_child(child,type)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -1299,6 +1345,7 @@ const char * xsdType::getCppName()
 		case	type_simple:
 		case	type_complex:
 		case	type_sequence:
+		case	type_choice:
 			if (m_cname.empty() && m_parent != NULL)
 				name = m_parent->getCppName();
 			else
