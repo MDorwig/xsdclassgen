@@ -10,8 +10,6 @@
 
 bool compare_by_name(Symbol * s1,Symbol * s2)
 {
-	const char * str1 ;
-	const char * str2 ;
 	return s1->m_name < s2->m_name;
 }
 
