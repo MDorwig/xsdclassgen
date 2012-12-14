@@ -293,7 +293,7 @@ public:
 	virtual bool  isfloat();
 	virtual bool  isString();
 	virtual bool  isScalar();
-	virtual int   getDim() { return 1 ;}
+	//virtual int   getDim() { return 1 ;}
 
 	const char * getName()
 	{
@@ -469,11 +469,10 @@ public:
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & elem,const char * src);
 	void setCppName(const char * name);
-	bool isInteger() { return getDim() == 1 && m_base->isInteger();}
-	bool isfloat()   { return getDim() == 1 && m_base->isfloat();}
+	bool isInteger() { return m_base->isInteger();}
+	bool isfloat()   { return m_base->isfloat();}
 	bool isString();
 	bool isScalar();
-	int  getDim();
 	const char * getReturnType();
 
 	xsdType       * m_base ;

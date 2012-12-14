@@ -462,16 +462,6 @@ void xsdSequence::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
 	//m_types.GenImpl(out,st,defaultstr);
 }
 
-int xsdSimpleType::getDim()
-{
-	int n = 1 ;
-	if (m_rest != NULL)
-		n = m_rest->getDim();
-	else
-		n = m_parent->getDim();
-	return n ;
-}
-
 void xsdSimpleType::GenHeader(CppFile & out,int indent,const char * defaultstr)
 {
 	if (!tashdr())
@@ -652,13 +642,13 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 				/*
 				 * generate constructor
 				 */
-				out.iprintln(indent,"%s()",tname);
-				out.iprintln(indent++,"{");
 				if (defaultstr != NULL && *defaultstr)
 				{
+					out.iprintln(indent,"%s()",tname);
+					out.iprintln(indent++,"{");
 					out.iprintln(indent,"sets(\"%s\");",defaultstr);
+					out.iprintln(--indent,"}");
 				}
-				out.iprintln(--indent,"}");
 			}
 			/*
 			 * generate sets function
@@ -699,7 +689,7 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 				out.iprintln(indent,"return m_value.gets();");
 				out.iprintln(--indent,"}");
 
-				out.iprintln(indent,"void validate() throw();");
+				//out.iprintln(indent,"void validate() throw();");
 			}
 			out.iprintln(indent,"%s m_value;",basename);
 			out.iprintln(--indent,"};\n");
@@ -744,31 +734,14 @@ void xsdRestriction::setCppName(const char * name)
 
 bool xsdRestriction::isString()
 {
-	return m_base->isString() && getDim() != 1 ;
+	return m_base->isString() ;
 }
 
 bool xsdRestriction::isScalar()
 {
 	bool res = false ;
-	int d = getDim();
-	if (d == 1)
-		res = m_base->isInteger() || m_base->isfloat() || m_base->isString();
+	res = m_base->isInteger() || m_base->isfloat();
 	return res ;
-}
-
-int xsdRestriction::getDim()
-{
-	int len = m_length;
-	if (len == 0)
-		len = m_maxLength;
-	if (len == 0)
-		len = 1 ;
-	return len ;
-}
-
-int xsdList::getDim()
-{
-	return m_parent->getDim();
 }
 
 void xsdList::GenHeader(CppFile &out,int indent,const char * defaultstr)
