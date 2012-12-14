@@ -142,6 +142,7 @@ enum typetag
 	type_dayTimeDuration,
 	type_dateTimeStamp,
 	type_complex,
+	type_complexContent,
 	type_simple,
 	type_restriction,
 	type_sequence,
@@ -204,12 +205,15 @@ public:
 	std::string m_cname;
 	std::string m_default;
 	xsdType *   m_type ;
+
 	const char * getName() { return m_name.c_str();}
 	const char * getCppName() { return m_cname.c_str();}
 	virtual bool isPtr() { return false;}
+	virtual bool isChoice() { return false;}
 	virtual void CalcDependency(xsdTypeList & list) {}
 	virtual void GenHeader(CppFile & out,int indent){}
 	virtual const char * getlvalue() { return getCppName();}
+	virtual const char * getChoiceName() { return "";}
 };
 
 class xsdAttribute : public xsdAttrElemBase
@@ -326,6 +330,31 @@ public:
 	{
 		return m_local ;
 	}
+
+	bool tascd()
+	{
+		bool res = m_cd ;
+		if (m_cd == false)
+			m_cd = true ;
+		return res ;
+	}
+
+	bool tashdr()
+	{
+		bool res = m_hdrimpl;
+		if (m_hdrimpl == false)
+				m_hdrimpl = true ;
+		return res;
+	}
+
+	bool tascpp()
+	{
+		bool res = m_cppimpl;
+		if (m_cppimpl == false)
+				m_cppimpl = true ;
+		return res;
+	}
+
 	virtual void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	virtual void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	virtual void GenAttrHeader(CppFile & out,int indent) {}
@@ -338,12 +367,13 @@ public:
 	std::string m_cname;
 	xsdType *   m_parent;
 	bool        m_local;
-	bool        m_cd;
 	typetag 		m_tag;
 	int     		m_id ;
+	bool    		m_indeplist;
+private:
+	bool        m_cd;
 	bool    		m_hdrimpl;
 	bool    		m_cppimpl;
-	bool    		m_indeplist;
 	static int 	m_count;
 };
 
@@ -536,7 +566,8 @@ class xsdSequence : public xsdType
 public:
 	xsdSequence(xsdType * parent) : xsdType("",type_sequence,parent)
 	{
-
+		m_maxOccurs = 1 ;
+		m_minOccurs = 1 ;
 	}
 
 	void CalcDependency(xsdTypeList & list);
@@ -546,6 +577,8 @@ public:
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	bool CheckCycle(xsdElement * elem);
 
+	int            m_maxOccurs;
+	int            m_minOccurs;
 	xsdElementList m_elements ;
 	xsdTypeList    m_types ;
 	std::string    m_structname;
@@ -667,6 +700,21 @@ public:
 	xsdAttrList m_attributes;
 };
 
+class xsdComplexContent : public xsdType
+{
+public:
+	xsdComplexContent(const char * name,const char * elemname,xsdType * parent) :
+		xsdType(name,type_complexContent,parent)
+	{
+		m_type = NULL;
+	}
+	void CalcDependency(xsdTypeList & list);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	xsdType * m_type; // extension | restriction
+};
+
 class xsdElement : public xsdAttrElemBase
 {
 public:
@@ -724,14 +772,22 @@ public:
 		return m_default.c_str();
 	}
 
+	const char * getChoiceName()
+	{
+		return "m_choice";
+	}
+
 	const char * getlvalue()
 	{
 		static std::string lval ;
 		if (isPtr())
 		{
 			lval = "(*";
-			if (m_isChoice)
-				lval += "m_choice.";
+			if (isChoice())
+			{
+				lval += getChoiceName();
+				lval += ".";
+			}
 			lval += getCppName();
 			lval += ")";
 		}
@@ -755,14 +811,15 @@ public:
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
 	bool isPtr() { return m_isChoice || m_isCyclic;}
+	bool isChoice() { return m_isChoice;}
 	std::string m_choice_selector;
 	xsdTypename * m_typename;
 	xsdNamespace* m_tns ;
 	xsdTypeList m_deplist;
-	unsigned		m_minOccurs;
-	unsigned   	m_maxOccurs;
 	bool        m_isChoice;
 	bool        m_isCyclic;
+	unsigned		m_minOccurs;
+	unsigned   	m_maxOccurs;
 };
 
 class xsdSchema
