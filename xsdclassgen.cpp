@@ -1427,7 +1427,7 @@ bool  xsdType::isfloat()
 
 bool  xsdType::isScalar()
 {
-	return isInteger() || isfloat() || (isString() && getDim() == 1) ;
+	return isInteger() || isfloat() ;
 }
 
 bool  xsdType::isString()
