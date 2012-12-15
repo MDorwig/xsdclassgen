@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <assert.h>
-#include <libxml2/libxml/parser.h>
+#include <libxml/parser.h>
 #include "xsdclassgen.h"
 
 void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool ischoice)
@@ -101,47 +101,6 @@ void GenParserChildLoopEnd(CppFile & out)
 	out.iprintln(3,"}");
 	out.iprintln(2,"}");
 	out.iprintln(1,"}");
-}
-
-void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
-{
-	std::list<xsdElement*>::iterator ei;
-	out.iprintln(indent,"struct %s",getCppName());
-	out.iprintln(indent++,"{");
-	/*
-	 * Constructor
-	 */
-	out.iprintln(indent,"%s()",getCppName());
-	out.iprintln(indent++,"{");
-	m_elements.GenInit(out,indent);
-	out.iprintln(--indent,"}");
-	/*
-	 * Parse Function
-	 */
-	out.iprintln(indent,"void Parse(xmlNodePtr node);");
-	m_parent->GenAttrHeader(out,indent);
-	m_elements.GenHeader(out,indent);
-	m_types.GenHeader(out,indent,defaultstr,false);
-	out.iprintln(--indent,"};\n");
-}
-
-void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr)
-{
-	std::list<xsdElement*>::iterator ei;
-	out.iprintln(indent,"struct %s",getCppName());
-	out.iprintln(indent++,"{");
-	/*
-	 * Constructor
-	 */
-	out.iprintln(indent,"%s()",getCppName());
-	out.iprintln(indent++,"{");
-	m_elements.GenInit(out,indent);
-	out.iprintln(--indent,"}");
-
-	out.iprintln(indent,"void Parse(xmlNodePtr node);");
-	m_parent->GenAttrHeader(out,indent);
-	m_elements.GenHeader(out,indent);
-	out.iprintln(--indent,"};\n");
 }
 
 void xsdExtension::GenHeader(CppFile &out,int indent,const char * defaultstr)
@@ -343,6 +302,15 @@ void xsdElement::GenInit(CppFile & out,int indent)
 	}
 }
 
+void xsdElement::GenDelete(CppFile & out,int indent)
+{
+	if (m_isCyclic)
+	{
+		out.iprintln(indent,"if (%s != NULL)",getCppName());
+		out.iprintln(indent+1,"delete %s;",getCppName());
+	}
+}
+
 void xsdGroup::GenHeader(CppFile & out,int indent,const char * defaultstr)
 {
 	if (m_type != NULL)
@@ -390,6 +358,30 @@ void xsdElementList::GenInit(CppFile & out,int indent)
 	}
 }
 
+void xsdElementList::GenDelete(CppFile & out,int indent)
+{
+	if (hasPointer())
+	{
+		for (elementIterator ei = begin() ; ei != end() ; ei++)
+		{
+			xsdElement * elem = *ei ;
+			elem->GenDelete(out,indent);
+		}
+	}
+}
+
+bool xsdElementList::hasPointer()
+{
+	int nptr = 0 ;
+	for (elementIterator ei = begin() ; ei != end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		if (elem->m_isCyclic)
+			nptr++;
+	}
+	return nptr != 0 ;
+}
+
 void xsdAttribute::GenHeader(CppFile & out,int indent)
 {
 	if (m_type != NULL)
@@ -429,37 +421,6 @@ void xsdTypeList::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 void xsdType::GenHeader(CppFile & out,int indent,const char * defaultstr)
 {
 
-}
-
-void xsdAll::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
-{
-	if (tascpp())
-		return ;
-	GenParserChildLoopStart(out,st,m_elements,defaultstr,false);
-	GenElementCases(out,st,m_elements,false);
-	GenParserChildLoopEnd(out);
-}
-
-void xsdAll::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
-{
-	m_elements.GenLocal(out,st);
-}
-
-
-void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
-{
-	if (tascpp())
-		return ;
-	GenParserChildLoopStart(out,st,m_elements,defaultstr,false);
-	GenElementCases(out,st,m_elements,false);
-	m_types.GenImpl(out,st,defaultstr);
-	GenParserChildLoopEnd(out);
-}
-
-void xsdSequence::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
-{
-	m_elements.GenLocal(out,st);
-	//m_types.GenImpl(out,st,defaultstr);
 }
 
 void xsdSimpleType::GenHeader(CppFile & out,int indent,const char * defaultstr)
