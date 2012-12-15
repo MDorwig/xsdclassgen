@@ -178,7 +178,9 @@ public:
 	void GenImpl(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
+	void GenDelete(CppFile & out,int indent);
 	bool CheckCycle(xsdElement * elem);
+	bool hasPointer();
 };
 
 typedef xsdElementList::iterator elementIterator ;
@@ -809,6 +811,7 @@ public:
 	void GenImpl(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
+	void GenDelete(CppFile & out,int indent);
 	bool isPtr() { return m_isChoice || m_isCyclic;}
 	bool isChoice() { return m_isChoice;}
 	std::string m_choice_selector;
@@ -832,5 +835,11 @@ public:
 
 xsdType * FindType(const char * name);
 xsdType * FindType(xsdTypename * tn);
+
+void GenParserChildLoopStart(CppFile & out,Symtab & st,xsdElementList & elements,const char * defaultstr,bool ischoice);
+void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool ischoice);
+void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes,const char * defaultstr);
+void GenParserChildLoopEnd(CppFile & out);
+
 
 #endif // XSDCLASSGEN_H_INCLUDED
