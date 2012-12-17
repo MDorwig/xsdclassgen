@@ -1871,9 +1871,9 @@ int main(int argc, char * argv[])
 #if DEBUG
 				printf("type %s from deplist\n",type->getCppName());
 #endif
-				type->GenHeader(hfile,0,NULL);
-				type->GenLocal(cppfile,symtab,NULL);
-				type->GenImpl(cppfile,symtab,NULL);
+				type->GenHeader(hfile,0,NULL,false);
+				type->GenLocal(cppfile,symtab,NULL,false);
+				type->GenImpl(cppfile,symtab,NULL,false);
 			}
 		}
 #if 1
@@ -1887,11 +1887,8 @@ int main(int argc, char * argv[])
 				elem->CalcDependency(elem->m_deplist);
 				if (elem->m_type != NULL)
 				{
-					const char * name = elem->getCppName();
-					if (strncmp(name,"m_",2) == 0)
-						name += 2 ; // skip "m_" prefix on toplevel elements
-					elem->m_type->GenHeader(hfile,0,elem->getDefault());
-					elem->m_type->GenImpl(cppfile,symtab,elem->getDefault());
+					elem->m_type->GenHeader(hfile,0,elem->getDefault(),true);
+					elem->m_type->GenImpl(cppfile,symtab,elem->getDefault(),true);
 				}
 			}
 		}
@@ -1939,27 +1936,27 @@ void xsdComplexContent::CalcDependency(xsdTypeList& list)
 		m_type->CalcDependency(list);
 }
 
-void xsdComplexContent::GenHeader(CppFile& out, int indent,const char* defaultstr)
+void xsdComplexContent::GenHeader(CppFile& out, int indent,const char* defaultstr,bool isroot)
 {
 	if (!tashdr())
 	{
 		if (m_type != NULL)
-			m_type->GenHeader(out,indent,defaultstr);
+			m_type->GenHeader(out,indent,defaultstr,isroot);
 	}
 }
 
-void xsdComplexContent::GenImpl(CppFile& out, Symtab& st,const char* defaultstr)
+void xsdComplexContent::GenImpl(CppFile& out, Symtab& st,const char* defaultstr,bool isroot)
 {
 	if (tascpp() || m_type == NULL)
 		return ;
-	m_type->GenImpl(out,st,defaultstr);
+	m_type->GenImpl(out,st,defaultstr,isroot);
 }
 
-void xsdComplexContent::GenLocal(CppFile& out, Symtab& st,const char* defaultstr)
+void xsdComplexContent::GenLocal(CppFile& out, Symtab& st,const char* defaultstr,bool isroot)
 {
 	if (m_type != NULL)
 	{
-		m_type->GenLocal(out,st,defaultstr);
+		m_type->GenLocal(out,st,defaultstr,isroot);
 	}
 }
 
