@@ -12,7 +12,7 @@
 #include <libxml/parser.h>
 #include "xsdclassgen.h"
 
-void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr)
+void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot)
 {
 	std::list<xsdElement*>::iterator ei;
 	out.iprintln(indent,"struct %s",getCppName());
@@ -41,13 +41,16 @@ void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	/*
 	 * Parse Function
 	 */
-	out.iprintln(indent,"void Parse(xmlNodePtr node);");
+	if (isroot)
+		out.iprintln(indent,"void Parse(xmlDocPtr node);");
+	else
+		out.iprintln(indent,"void Parse(xmlNodePtr node);");
 	m_parent->GenAttrHeader(out,indent);
 	m_elements.GenHeader(out,indent);
 	out.iprintln(--indent,"};\n");
 }
 
-void xsdAll::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
+void xsdAll::GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot)
 {
 	if (tascpp())
 		return ;
@@ -56,7 +59,7 @@ void xsdAll::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	GenParserChildLoopEnd(out);
 }
 
-void xsdAll::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
+void xsdAll::GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot)
 {
 	m_elements.GenLocal(out,st);
 }
