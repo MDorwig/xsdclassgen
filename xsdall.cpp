@@ -45,6 +45,7 @@ void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr,bool isr
 		out.iprintln(indent,"void Parse(xmlDocPtr node);");
 	else
 		out.iprintln(indent,"void Parse(xmlNodePtr node);");
+	out.iprintln(indent,"void Write(xmlStream & out);");
 	m_parent->GenAttrHeader(out,indent);
 	m_elements.GenHeader(out,indent);
 	out.iprintln(--indent,"};\n");
@@ -54,7 +55,7 @@ void xsdAll::GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isro
 {
 	if (tascpp())
 		return ;
-	GenParserChildLoopStart(out,st,m_elements,defaultstr,false);
+	GenParserChildLoopStart(out,m_elements);
 	GenElementCases(out,st,m_elements,false);
 	GenParserChildLoopEnd(out);
 }
@@ -64,4 +65,7 @@ void xsdAll::GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isr
 	m_elements.GenLocal(out,st);
 }
 
-
+void xsdAll::GenWrite(CppFile & out,Symtab & st)
+{
+	GenWriteElements(out,m_elements);
+}

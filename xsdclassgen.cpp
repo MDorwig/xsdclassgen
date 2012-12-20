@@ -1691,6 +1691,19 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 	}
 }
 
+bool xsdElement::hasAttributes()
+{
+	bool res = false ;
+	for (xsdType * t = m_type ; t != NULL ; t = t->m_parent)
+	{
+		if (t->hasAttributes())
+		{
+			res = true ;
+		}
+	}
+	return res ;
+}
+
 void xsdElementList::CalcDependency(xsdTypeList & list)
 {
 	elementIterator eli ;
