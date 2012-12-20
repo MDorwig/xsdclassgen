@@ -77,8 +77,55 @@ void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool is
 	}
 }
 
+void GenWriteElementCases(CppFile & out,Symtab & st,xsdElementList & elements)
+{
+	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		Symbol * s = st.find(elem->getName());
+		if (s != NULL)
+		{
+			out.iprintln(2,"case sy_%s:",s->m_cname.c_str());
+			out.iprintln(3,"(*m_choice.%s).Write(out);",elem->getCppName());
+			out.iprintln(2,"break;");
+		}
+	}
+	out.iprintln(2,"default:");
+	out.iprintln(2,"break;");
+}
 
-void GenParserChildLoopStart(CppFile & out,Symtab & st,xsdElementList & elements,const char * defaultstr,bool ischoice)
+void xsdElement::GenWriteAttr(CppFile & out)
+{
+	for(xsdType * type = m_type ; type != NULL ; type = type->m_parent)
+	{
+		if (type->m_tag == type_complex)
+			type->GenWriteAttr(out,1);
+	}
+}
+
+void xsdElement::GenWrite(CppFile & out)
+{
+	if (hasAttributes())
+	{
+		out.iprintln(1,"out.putstring(\"<%s\");",getName());
+		GenWriteAttr(out);
+		out.iprintln(1,"out.putstring(\">\");");
+	}
+	else
+		out.iprintln(1,"out.putstring(\"<%s>\");",getName());
+	out.iprintln(1,"%s.Write(out);",getCppName());
+	out.iprintln(1,"out.putstring(\"</%s>\");",getName());
+}
+
+void GenWriteElements(CppFile & out,xsdElementList & elements)
+{
+	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
+	{
+		(*ei)->GenWrite(out);
+	}
+}
+
+void GenParserChildLoopStart(CppFile & out,xsdElementList & elements)
 {
 	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
 	{
@@ -112,6 +159,7 @@ void xsdExtension::GenHeader(CppFile &out,int indent,const char * defaultstr,boo
 		out.iprintln(indent,"void Parse(xmlDocPtr node);");
 	else
 		out.iprintln(indent,"void Parse(xmlNodePtr node);");
+	out.iprintln(indent,"void Write(xmlStream & out);");
 	m_attributes.GenHeader(out,indent,defaultstr);
 	out.iprintln(indent,"%s %s;\n",m_basetypename->getCppName(),"m_val");
 	out.iprintln(--indent,"};");
@@ -144,10 +192,12 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr,bool i
 				out.iprintln(indent,"void Parse(xmlDocPtr node);");
 			else
 				out.iprintln(indent,"void Parse(xmlNodePtr node);");
+			out.iprintln(indent,"void Write(xmlStream & out);");
 		}
 		const char * choicename = "xs_choice";
 		out.iprintln(indent,   "struct %s",choicename);
 		out.iprintln(indent++,"{");
+		out.iprintln(indent,"void Write(xmlStream & out);");
 		/*
 		 * generate an enum to determine the taken choice
 		 */
@@ -207,7 +257,7 @@ void xsdChoice::GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool i
 		return ;
 	if (m_parent->m_tag == type_complex)
 	{
-		GenParserChildLoopStart(out,st,m_elements,defaultstr,true);
+		GenParserChildLoopStart(out,m_elements);
 		GenElementCases(out,st,m_elements,true);
 		GenParserChildLoopEnd(out);
 	}
@@ -222,6 +272,14 @@ void xsdChoice::GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool 
 	m_elements.GenLocal(out,st);
 }
 
+void xsdChoice::GenWrite(CppFile & out,Symtab & st)
+{
+	int indent = 1 ;
+	out.iprintln(indent,"switch(m_choice.m_selected)");
+	out.iprintln(indent++,"{");
+	GenWriteElementCases(out,st,m_elements);
+	out.iprintln(--indent,"}");
+}
 
 void xsdComplexType::GenAttrHeader(CppFile & out,int indent)
 {
@@ -244,6 +302,7 @@ void xsdComplexType::GenHeader(CppFile & out,int indent,const char * defaultstr,
 			out.iprintln(indent,"struct %s",getCppName());
 			out.iprintln(indent++,"{");
 			m_attributes.GenHeader(out,indent,defaultstr);
+			out.iprintln(indent,"void Write(xmlStream & out);");
 			out.iprintln(--indent,"};");
 		}
 	}
@@ -293,6 +352,7 @@ void xsdElement::GenImpl(CppFile & out,Symtab & st)
 		xsdType * t = *ti ;
 		t->GenImpl(out,st,getDefault(),false);
 	}
+	out.iprintln(1,"%s.Write(out);",getCppName());
 }
 
 void xsdElement::GenLocal(CppFile & out,Symtab & st)
@@ -569,6 +629,10 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isr
 	    out.iprintln(2,"default: m_value = %s_invalid; break;",getCppName());
 	  out.iprintln(1,"}");
 	out.iprintln(0,"}\n");
+	out.iprintln(0,"void %s::Write(xmlStream & out)",qname.c_str());
+	out.iprintln(0,"{");
+	out.iprintln(1,"out.putstring(gets());");
+	out.iprintln(0,"}");
 }
 
 
@@ -595,6 +659,7 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr,
 		else
 			out.iprintln(indent,"m_value = %s_invalid;",m_enum->getCppName());
 		out.iprintln(--indent,"}");
+		out.iprintln(indent,"void Write(xmlStream & out);");
 		out.iprintln(--indent,"};\n");
 	}
 	else
@@ -661,6 +726,7 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr,
 
 				//out.iprintln(indent,"void validate() throw();");
 			}
+			out.iprintln(indent,"void Write(xmlStream & out);");
 			out.iprintln(indent,"%s m_value;",basename);
 			out.iprintln(--indent,"};\n");
 		}
@@ -681,6 +747,10 @@ void xsdRestriction::GenImpl(CppFile & out,Symtab & st,const char * defaultstr,b
 	if (m_enum != NULL)
 	{
 		m_enum->GenImpl(out,st,defaultstr,isroot);
+	}
+	else if (m_base != NULL)
+	{
+		m_base->GenImpl(out,st,defaultstr,isroot);
 	}
 	else if (m_simple != NULL)
 	{
@@ -843,24 +913,51 @@ void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes,const 
   }
 }
 
+void GenWriteAttr(CppFile & out,int indent,xsdAttribute * attr)
+{
+	if (attr->m_type != NULL && attr->m_type->isScalar())
+			out.iprintln(indent,"out.putattr(\"%s\",%s.get());",attr->getName(),attr->getCppName());
+	else
+		out.iprintln(indent,"out.putattr(\"%s\",%s.gets());",attr->getName(),attr->getCppName());
+}
+
+void GenWriteAttr(CppFile & out,int indent,xsdAttrList & attributes)
+{
+	for (attrIterator ai = attributes.begin() ; ai != attributes.end() ; ai++)
+	{
+		GenWriteAttr(out,indent,*ai);
+	}
+}
+
+void xsdComplexType::GenWriteAttr(CppFile & out,int indent)
+{
+	::GenWriteAttr(out,indent,m_attributes);
+}
+
 void xsdComplexType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot)
 {
+	int i = 0 ;
 	if (tascpp() || m_type == NULL)
 		return ;
 	m_type->GenLocal(out,st,defaultstr,isroot);
-	out.iprintln(0,"/*\n * complexType %s\n*/",getName());
+	out.iprintln(i,"/*\n * complexType %s\n*/",getName());
 	if (isroot)
-		out.iprintln(0,"void %s::Parse(xmlDocPtr node)",getQualifiedName().c_str());
+		out.iprintln(i,"void %s::Parse(xmlDocPtr node)",getQualifiedName().c_str());
 	else
-		out.iprintln(0,"void %s::Parse(xmlNodePtr node)",getQualifiedName().c_str());
-	out.iprintln(0,"{");
+		out.iprintln(i,"void %s::Parse(xmlNodePtr node)",getQualifiedName().c_str());
+	out.iprintln(i,"{");
 	GenParserAttrLoop(out,st,m_attributes,defaultstr);
 	if (m_type != NULL)
 	{
 		m_type->GenImpl(out,st,defaultstr,false);
 	}
-	out.iprintln(0,"}");
+	out.iprintln(i,"}");
 	out.println();
+	out.iprintln(i,"void %s::Write(xmlStream & out)",getQualifiedName().c_str());
+	out.iprintln(i++,"{");
+	//GenWriteAttr(out,1);
+	m_type->GenWrite(out,st);
+	out.iprintln(--i,"}");
 }
 
 void xsdComplexType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src)

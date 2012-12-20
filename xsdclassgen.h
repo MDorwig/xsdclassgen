@@ -295,6 +295,8 @@ public:
 	virtual bool  isfloat();
 	virtual bool  isString();
 	virtual bool  isScalar();
+	virtual	bool  hasAttributes() { return false;}
+
 	//virtual int   getDim() { return 1 ;}
 
 	const char * getName()
@@ -359,6 +361,8 @@ public:
 
 	virtual void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
 	virtual void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	virtual void GenWrite(CppFile & out,Symtab & st) {}
+	virtual void GenWriteAttr(CppFile & out,int ident) {}
 	virtual void GenAttrHeader(CppFile & out,int indent) {}
 	virtual void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot) {}
 	virtual void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & elem,const char * src);
@@ -575,6 +579,7 @@ public:
 
 	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenWrite(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
 	bool CheckCycle(xsdElement * elem);
 
@@ -636,6 +641,7 @@ public:
 
 	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenWrite(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
 	bool CheckCycle(xsdElement * elem);
 
@@ -660,6 +666,7 @@ public:
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenWrite(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
 	bool CheckCycle(xsdElement * elem);
 	xsdElementList m_elements ;
@@ -692,10 +699,12 @@ public:
 	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
 	void GenAttrHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenWriteAttr(CppFile & out,int indent);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
 	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src);
 	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	bool CheckCycle(xsdElement * elem);
+	bool hasAttributes() { return m_attributes.empty() == false;}
 
 	xsdType *   m_type;
 	xsdAttrList m_attributes;
@@ -768,6 +777,8 @@ public:
 		return !m_default.empty();
 	}
 
+	bool hasAttributes();
+
 	const char * getDefault()
 	{
 		return m_default.c_str();
@@ -809,6 +820,8 @@ public:
 
 	void GenHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st);
+	void GenWrite(CppFile & out);
+	void GenWriteAttr(CppFile & out);
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
 	void GenDelete(CppFile & out,int indent);
@@ -836,8 +849,10 @@ public:
 xsdType * FindType(const char * name);
 xsdType * FindType(xsdTypename * tn);
 
-void GenParserChildLoopStart(CppFile & out,Symtab & st,xsdElementList & elements,const char * defaultstr,bool ischoice);
+void GenParserChildLoopStart(CppFile & out,xsdElementList & elements);
 void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool ischoice);
+void GenWriteElementCases(CppFile & out,Symtab & st,xsdElementList & elements);
+void GenWriteElements(CppFile & out,xsdElementList & elements);
 void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes,const char * defaultstr);
 void GenParserChildLoopEnd(CppFile & out);
 
