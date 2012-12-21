@@ -400,7 +400,7 @@ void not_supported_error(xmlNodePtr e,xmlDocPtr doc)
 }
 
 xsdRestriction * ParseRestriction(xmlNodePtr rest,xsdType * parent,Symtab & st);
-xsdComplexType * ParseComplexType(xmlNodePtr type,const char * elemname,xsdType * parent,Symtab & st);
+xsdComplexType * ParseComplexType(xmlNodePtr type,xsdElement * elem,xsdType * parent,Symtab & st);
 xsdSimpleType  * ParseSimpleType(xmlNodePtr type,const char * elemname,xsdType * parent,Symtab & st);
 xsdChoice      * ParseChoice(xmlNodePtr choice,xsdType * ,Symtab & st);
 xsdGroup  		 * ParseGroup(xmlNodePtr group,xsdType * parent,Symtab & st);
@@ -524,6 +524,7 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			break ;
 		}
 	}
+	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype,minOccurs,maxOccurs,isChoice,xsddefault);
 	for_each_child(child,element)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -532,17 +533,17 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			switch(kw)
 			{
 				case	xsd_complexType:
-					if (xsdtype != NULL)
+					if (xsdelem->m_type != NULL)
 						printf("element %s already has a type %s\n",xsdname,xsdtype->getName());
 					else
-						xsdtype = ParseComplexType(child,xsdname,parent,st);
+						ParseComplexType(child,xsdelem,parent,st);
 				break ;
 
 				case	xsd_simpleType:
-					if (xsdtype != NULL)
+					if (xsdelem->m_type != NULL)
 						printf("element %s already has a type %s\n",xsdname,xsdtype->getCppName());
 					else
-						xsdtype = ParseSimpleType(child,xsdname,parent,st);
+						xsdelem->m_type = ParseSimpleType(child,xsdname,parent,st);
 				break ;
 
 				case	xsd_annotation:
@@ -554,7 +555,6 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			}
 		}
 	}
-	xsdelem = new xsdElement(xsdname,xsdtypename,xsdtype,minOccurs,maxOccurs,isChoice,xsddefault);
 	return xsdelem;
 }
 
@@ -844,7 +844,7 @@ xsdSimpleContent * ParseSimpleContent(xmlNodePtr cont,xsdType * parent,Symtab & 
 	return xsdcontent;
 }
 
-xsdComplexType * ParseComplexType(xmlNodePtr type,const char * elemname,xsdType * parent,Symtab & st)
+xsdComplexType * ParseComplexType(xmlNodePtr type,xsdElement * elem,xsdType * parent,Symtab & st)
 {
 	const char * xsdtypename = "";
 	xsd_keyword kw ;
@@ -861,7 +861,7 @@ xsdComplexType * ParseComplexType(xmlNodePtr type,const char * elemname,xsdType 
 			break ;
 		}
 	}
-	xsdComplexType * newtype = new xsdComplexType(xsdtypename,elemname,parent);
+	xsdComplexType * newtype = new xsdComplexType(xsdtypename,elem,parent);
 	for_each_child(child,type)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -1298,7 +1298,7 @@ xsdSchema * ParseSchema(xmlNodePtr schema,Symtab & st)
 				break ;
 
 				case	xsd_complexType:
-					AddType(ParseComplexType(child,"",NULL,st));
+					AddType(ParseComplexType(child,NULL,NULL,st));
 				break ;
 
 				case	xsd_simpleType:
@@ -1357,6 +1357,33 @@ const char * xsdType::getCppName()
 		break ;
 
 		default:               		name = m_cname.c_str();	break ;
+	}
+	return name ;
+}
+
+const char * xsdType::getNativeName()
+{
+	const char * name ;
+	switch(m_tag)
+	{
+		case  type_float:					     name = "float";								break ;
+		case	type_double:				     name = "double";							break ;
+		case	type_unsignedByte: 	     name = "unsigned char";				break ;
+		case  type_unsignedShort:	     name = "unsigned short";				break ;
+		case  type_nonNegativeInteger: name = "unsigned int"; 	break ;
+		case	type_positiveInteger:    name = "unsigned int";    	break ;
+		case	type_unsignedInt: 	     name = "unsigned int";	       	break ;
+		case	type_unsignedLong:       name = "unsigned Long";    		break ;
+		case	type_byte:    			     name = "unsigned char";				    		break ;
+		case	type_short:					     name = "short";			    			break ;
+		case	type_negativeInteger:		 name = "int";     break ;
+		case	type_int:						     name = "int";									break ;
+		case	type_long:    			     name = "long";								break ;
+		case	type_boolean:				     name = "bool";								break ;
+		case	type_integer:            name = "int"	;						break ;
+
+		default:
+			name =getCppName();
 	}
 	return name ;
 }
@@ -1694,13 +1721,8 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 bool xsdElement::hasAttributes()
 {
 	bool res = false ;
-	for (xsdType * t = m_type ; t != NULL ; t = t->m_parent)
-	{
-		if (t->hasAttributes())
-		{
-			res = true ;
-		}
-	}
+	if (m_type != NULL)
+		res = m_type->hasAttributes();
 	return res ;
 }
 
@@ -1884,9 +1906,9 @@ int main(int argc, char * argv[])
 #if DEBUG
 				printf("type %s from deplist\n",type->getCppName());
 #endif
-				type->GenHeader(hfile,0,NULL,false);
-				type->GenLocal(cppfile,symtab,NULL,false);
-				type->GenImpl(cppfile,symtab,NULL,false);
+				type->GenHeader(hfile,0,NULL);
+				type->GenLocal(cppfile,symtab,NULL);
+				type->GenImpl(cppfile,symtab,NULL);
 			}
 		}
 #if 1
@@ -1900,8 +1922,10 @@ int main(int argc, char * argv[])
 				elem->CalcDependency(elem->m_deplist);
 				if (elem->m_type != NULL)
 				{
-					elem->m_type->GenHeader(hfile,0,elem->getDefault(),true);
-					elem->m_type->GenImpl(cppfile,symtab,elem->getDefault(),true);
+					elem->m_type->GenHeader(hfile,0,elem->getDefault());
+					elem->m_type->GenImpl(cppfile,symtab,elem->getDefault());
+					elem->GenRootHeader(hfile,0);
+					elem->GenRootImpl(cppfile,symtab);
 				}
 			}
 		}
@@ -1949,27 +1973,27 @@ void xsdComplexContent::CalcDependency(xsdTypeList& list)
 		m_type->CalcDependency(list);
 }
 
-void xsdComplexContent::GenHeader(CppFile& out, int indent,const char* defaultstr,bool isroot)
+void xsdComplexContent::GenHeader(CppFile& out, int indent,const char* defaultstr)
 {
 	if (!tashdr())
 	{
 		if (m_type != NULL)
-			m_type->GenHeader(out,indent,defaultstr,isroot);
+			m_type->GenHeader(out,indent,defaultstr);
 	}
 }
 
-void xsdComplexContent::GenImpl(CppFile& out, Symtab& st,const char* defaultstr,bool isroot)
+void xsdComplexContent::GenImpl(CppFile& out, Symtab& st,const char* defaultstr)
 {
 	if (tascpp() || m_type == NULL)
 		return ;
-	m_type->GenImpl(out,st,defaultstr,isroot);
+	m_type->GenImpl(out,st,defaultstr);
 }
 
-void xsdComplexContent::GenLocal(CppFile& out, Symtab& st,const char* defaultstr,bool isroot)
+void xsdComplexContent::GenLocal(CppFile& out, Symtab& st,const char* defaultstr)
 {
 	if (m_type != NULL)
 	{
-		m_type->GenLocal(out,st,defaultstr,isroot);
+		m_type->GenLocal(out,st,defaultstr);
 	}
 }
 

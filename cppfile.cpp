@@ -91,7 +91,7 @@ void CppFile::GenSymtab(Symtab & symtab)
 	 */
 	println("struct symbolentry {");
 	println("  const char * name;");
-	println("        symbols value;");
+	println("  symbols      value;");
 	println("};");
 	println("static symbolentry symtab[] = ");
 	println(" {");
