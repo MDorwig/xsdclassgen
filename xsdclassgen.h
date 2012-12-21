@@ -175,7 +175,7 @@ class xsdElementList : public std::list<xsdElement*>
 public:
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
+//	void GenImpl(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
 	void GenDelete(CppFile & out,int indent);
@@ -236,6 +236,7 @@ public:
 	}
 	void GenHeader(CppFile & out,int indent);
 	void CalcDependency(xsdTypeList & list);
+	void GenWrite(CppFile & out,int indent, xsdElement * elem);
 
 	std::string m_fixed;
 	eUse        m_use ;
@@ -245,6 +246,7 @@ class xsdAttrList : public std::list<xsdAttribute*>
 {
 public:
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenWrite(CppFile & out,int indent,xsdElement * elem);
 };
 
 typedef xsdAttrList::iterator attrIterator ;
@@ -310,6 +312,7 @@ public:
 	}
 
 	const char * getCppName() ;
+	const char * getNativeName();
 
 	std::string getQualifiedName();
 	/*
@@ -359,12 +362,12 @@ public:
 		return res;
 	}
 
-	virtual void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	virtual void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	virtual void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	virtual void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	virtual void GenWrite(CppFile & out,Symtab & st) {}
-	virtual void GenWriteAttr(CppFile & out,int ident) {}
+	virtual void GenWriteAttr(CppFile & out,int ident,xsdElement * elem) {}
 	virtual void GenAttrHeader(CppFile & out,int indent) {}
-	virtual void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot) {}
+	virtual void GenLocal(CppFile & out,Symtab & st,const char * defaultstr) {}
 	virtual void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & elem,const char * src);
 	virtual void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	virtual bool CheckCycle(xsdElement * elem) { return false;}
@@ -396,8 +399,8 @@ public:
 		m_values.push_back(val);
 	}
 
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	bool CheckCycle(xsdElement * elem);
 
 	void setCppName(const char * name)
@@ -431,9 +434,9 @@ public:
 	xsdTypename * m_itemtypename ;
 	xsdType     * m_itemtype ;
 
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src);
 	void setCppName(const char *name);
 	int  getDim();
@@ -470,9 +473,9 @@ public:
 		m_enum = NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & elem,const char * src);
 	void setCppName(const char * name);
 	bool isInteger() { return m_base->isInteger();}
@@ -504,10 +507,10 @@ public:
 		m_basetypename = basetypename;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 //	void GenHeader(CppFile & out,int indent,const char * defaultstr);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 
 	xsdTypename * m_basetypename ;
@@ -523,9 +526,9 @@ public:
 	}
 	void CalcDependency(xsdTypeList & list);
 	bool CheckCycle(xsdElement * elem);
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 
 	xsdType * m_content; // xsd_Restriction oder xsd_Extension
 };
@@ -554,9 +557,9 @@ public:
 		m_union= NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & leftside,const char * rightside);
 	int  getDim();
 	void setCppName(const char * name);
@@ -577,10 +580,10 @@ public:
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenWrite(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	bool CheckCycle(xsdElement * elem);
 
 	int            m_maxOccurs;
@@ -599,9 +602,9 @@ public:
 	}
 
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	bool CheckCycle(xsdElement * elem);
 
 	xsdType * m_type ;
@@ -639,10 +642,10 @@ public:
 
 	void CalcDependency(xsdTypeList & list);
 
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenWrite(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	bool CheckCycle(xsdElement * elem);
 
 
@@ -664,65 +667,12 @@ public:
 	}
 
 	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenWrite(CppFile & out,Symtab & st);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	bool CheckCycle(xsdElement * elem);
 	xsdElementList m_elements ;
-};
-
-class xsdComplexType : public xsdType
-{
-public:
-	xsdComplexType(const char * name,const char * elemname,xsdType * parent) : xsdType(name,type_complex,parent)
-	{
-		if (m_name.empty())
-		{
-			if (elemname != NULL && elemname[0])
-			{
-				/*
-				 * simpleType ohne namen aber mit zugehörigem element
-				 * es wird ein typname in der form "<elemname>_t" erzeugt
-				 */
-				m_name = elemname;
-				m_name += "_t";
-				m_cname = MakeIdentifier("",m_name.c_str());
-			}
-			m_local= true;
-		}
-		m_type = NULL;
-	}
-
-	void CalcDependency(xsdTypeList & list);
-
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenAttrHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenWriteAttr(CppFile & out,int indent);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src);
-	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
-	bool CheckCycle(xsdElement * elem);
-	bool hasAttributes() { return m_attributes.empty() == false;}
-
-	xsdType *   m_type;
-	xsdAttrList m_attributes;
-};
-
-class xsdComplexContent : public xsdType
-{
-public:
-	xsdComplexContent(const char * name,const char * elemname,xsdType * parent) :
-		xsdType(name,type_complexContent,parent)
-	{
-		m_type = NULL;
-	}
-	void CalcDependency(xsdTypeList & list);
-	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool isroot);
-	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr,bool isroot);
-	xsdType * m_type; // extension | restriction
 };
 
 class xsdElement : public xsdAttrElemBase
@@ -819,9 +769,11 @@ public:
 	void CalcDependency(xsdTypeList & list);
 
 	void GenHeader(CppFile & out,int indent);
-	void GenImpl(CppFile & out,Symtab & st);
+	void GenRootHeader(CppFile & out,int indent);
+	void GenRootImpl(CppFile & out,Symtab & st);
+//	void GenImpl(CppFile & out,Symtab & st);
 	void GenWrite(CppFile & out);
-	void GenWriteAttr(CppFile & out);
+	void GenWriteAttr(CppFile & out,int indent);
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
 	void GenDelete(CppFile & out,int indent);
@@ -835,6 +787,66 @@ public:
 	bool        m_isCyclic;
 	unsigned		m_minOccurs;
 	unsigned   	m_maxOccurs;
+};
+
+
+class xsdComplexType : public xsdType
+{
+public:
+	xsdComplexType(const char * name,xsdElement * elem,xsdType * parent) : xsdType(name,type_complex,parent)
+	{
+		m_rootelem = NULL;
+		if (parent == NULL)
+			m_rootelem = elem;
+		if (m_name.empty())
+		{
+			if (elem != NULL)
+			{
+				/*
+				 * simpleType ohne namen aber mit zugehörigem element
+				 * es wird ein typname in der form "<elemname>_t" erzeugt
+				 */
+				m_name = elem->getName();
+				m_name += "_t";
+				m_cname = MakeIdentifier("",m_name.c_str());
+			}
+			m_local= true;
+		}
+		if (elem != NULL)
+			elem->m_type = this;
+		m_type = NULL;
+	}
+
+	void CalcDependency(xsdTypeList & list);
+
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenAttrHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src);
+	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
+	bool CheckCycle(xsdElement * elem);
+	bool hasAttributes() { return m_attributes.empty() == false;}
+
+	xsdType *   m_type;
+	xsdElement* m_rootelem;
+	xsdAttrList m_attributes;
+};
+
+class xsdComplexContent : public xsdType
+{
+public:
+	xsdComplexContent(const char * name,const char * elemname,xsdType * parent) :
+		xsdType(name,type_complexContent,parent)
+	{
+		m_type = NULL;
+	}
+	void CalcDependency(xsdTypeList & list);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	xsdType * m_type; // extension | restriction
 };
 
 class xsdSchema
