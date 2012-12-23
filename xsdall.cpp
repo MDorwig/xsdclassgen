@@ -17,19 +17,15 @@ void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	std::list<xsdElement*>::iterator ei;
 	out.iprintln(indent,"struct %s",getCppName());
 	out.iprintln(indent++,"{");
-	/*
-	 * Constructor
-	 */
-	out.iprintln(indent,"%s()",getCppName());
-	out.iprintln(indent++,"{");
 	if (m_elements.hasPointer())
 	{
+		/*
+		 * Constructor
+		 */
+		out.iprintln(indent,"%s()",getCppName());
+		out.iprintln(indent++,"{");
 		m_elements.GenInit(out,indent);
-	}
-	out.iprintln(indent,"m_bset = false;");
-	out.iprintln(--indent,"}");
-	if (m_elements.hasPointer())
-	{
+		out.iprintln(--indent,"}");
 		/*
 		 * Destructor
 		 * delete any pointer members
@@ -47,9 +43,22 @@ void xsdAll::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	 */
 	out.iprintln(indent,"void Parse(xmlNodePtr node);");
 	out.iprintln(indent,"void Write(xmlStream & out);");
+	/*
+	 * isset Function
+	 */
+	out.iprintln(indent,"bool isset() const ");
+	out.iprintln(indent++,"{");
+	for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+	{
+		xsdElement * elem = *ei ;
+		out.iprintln(indent,"if (%s.isset())",elem->getlvalue()) ;
+		out.iprintln(indent+1,"return true;") ;
+	}
+	out.iprintln(indent,"return false;") ;
+	out.iprintln(--indent,"};\n");
+
 	m_parent->GenAttrHeader(out,indent);
 	m_elements.GenHeader(out,indent);
-	out.iprintln(indent,"bool m_bset;");
 	out.iprintln(--indent,"};\n");
 }
 
