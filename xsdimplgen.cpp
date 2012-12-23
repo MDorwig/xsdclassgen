@@ -44,7 +44,6 @@ void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool is
 				{
 					elem->m_type->GenAssignment(out,id,*elem,"getContent(child)");
 				}
-				out.iprintln(id,"m_bset = true;");
 				out.iprintln(--id,"}");
 			}
 			else
@@ -55,8 +54,6 @@ void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool is
 					const char * typname = elem->m_type->getCppName();
 					if (elem->isArray())
 					{
-						if (!elem->isUnbounded())
-							out.iprintln(indent,"if (%s < %d)",elem->getIndexVar(),elem->m_maxOccurs);
 						out.iprintln(indent++,"{");
 						out.iprintln(indent,  "%s tmp;",typname);
 						elem->m_type->GenAssignment(out,indent,"tmp","getContent(child)");
@@ -70,7 +67,6 @@ void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool is
 					{
 						elem->m_type->GenAssignment(out,indent,*elem,"getContent(child)");
 					}
-					out.iprintln(id,"m_bset = true;");
 				}
 			}
 			out.iprintln(id,"break;");
@@ -149,12 +145,6 @@ void GenWriteElements(CppFile & out,xsdElementList & elements)
 
 void GenParserChildLoopStart(CppFile & out,xsdElementList & elements)
 {
-	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
-	{
-		xsdElement * e = *ei ;
-		if (e->isArray() && !e->isUnbounded())
-			out.iprintln(1,"int %s = 0;",e->getIndexVar());
-	}
 	out.iprintln(1,"for_each_child(child,node)");
 	out.iprintln(1,"{");
 	out.iprintln(2,"if (child->type == XML_ELEMENT_NODE)");
@@ -642,6 +632,7 @@ void xsdEnum::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	out.iprintln(indent,"private:") ;
 	out.iprintln(indent,"%s m_value;",enumname);
 	out.iprintln(indent,"bool m_bset;");
+	out.iprintln(indent,"public:");
 }
 
 void xsdEnum::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
@@ -677,11 +668,10 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	  for (enumIterator ei = m_values.begin() ; ei != m_values.end() ; ei++)
 	  {
 		  xsdEnumValue * val = *ei ;
-			out.iprintln(2,"case sy_%s: m_value = %s; break;",val->getSymbolName(),val->getEnumValue());
+			out.iprintln(2,"case sy_%s: m_value = %s; m_bset = true ; break;",val->getSymbolName(),val->getEnumValue());
 	  }
-	    out.iprintln(2,"default: m_value = %s_invalid; break;",getCppName());
+	    out.iprintln(2,"default: m_value = %s_invalid; m_bset = false ; break;",getCppName());
 	  out.iprintln(1,"}");
-	out.iprintln(1,"m_bset = true;");
 	out.iprintln(0,"}\n");
 	out.iprintln(0,"void %s::Write(xmlStream & out)",qname.c_str());
 	out.iprintln(0,"{");
@@ -742,13 +732,6 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 					out.iprintln(indent,"sets(\"%s\");",defaultstr);
 					out.iprintln(--indent,"}");
 				}
-				else
-				{
-					out.iprintln(indent,  "%s()",tname);
-					out.iprintln(indent++,"{");
-					out.iprintln(indent,    "m_bset = false;");
-					out.iprintln(--indent,"}");
-				}
 			}
 			/*
 			 * generate sets function
@@ -756,7 +739,6 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 			out.iprintln(indent,  "void sets(const char * str)");
 			out.iprintln(indent++,"{");
 			out.iprintln(indent,  "m_value.sets(str);");
-			out.iprintln(indent,  "m_bset  = true;");
 			out.iprintln(--indent,"}");
 			/*
 			 * generate set/get function
@@ -764,14 +746,12 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 			out.iprintln(indent,   "void set(const %s & val)",getReturnType());
 			out.iprintln(indent++,"{");
 			out.iprintln(indent,     "m_value = val;");
-			out.iprintln(indent,     "m_bset  = true;");
 			out.iprintln(--indent,"}");
 			if (m_base->isInteger())
 			{
 				out.iprintln(indent,   "void set(%s val)",m_base->getNativeName());
 				out.iprintln(indent++,"{");
 				out.iprintln(indent,    "m_value.set(val);");
-				out.iprintln(indent,    "m_bset  = true;");
 				out.iprintln(--indent,"}");
 			}
 			if (!m_base->isString())
@@ -800,9 +780,9 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 
 				//out.iprintln(indent,"void validate() throw();");
 			}
+			out.iprintln(indent,"bool isset() const { return m_value.isset();}") ;
 			out.iprintln(indent,"void Write(xmlStream & out);");
 			out.iprintln(indent,"%s m_value;",basename);
-			out.iprintln(indent,"bool m_bset;");
 			out.iprintln(--indent,"};\n");
 		}
 		else if (m_simple != NULL)
@@ -909,6 +889,7 @@ void xsdList::GenHeader(CppFile &out,int indent,const char * defaultstr)
 			out.iprintln(indent++,"{");
 			out.iprintln(indent,  "return m_list.gets();");
 			out.iprintln(--indent,"}");
+			out.iprintln(indent,"bool isset() const { return m_bset;}") ;
 			out.iprintln(indent,"xs_list<%s> m_list;",m_itemtype->getCppName());
 			out.iprintln(indent,"bool m_bset;");
 			out.iprintln(--indent,"};\n");

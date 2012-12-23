@@ -706,12 +706,6 @@ public:
 	}
 
 
-	const char * getIndexVar()
-	{
-		static std::string i = m_cname + "_idx";
-		return i.c_str() ;
-	}
-
 	bool isArray()
 	{
 		return m_maxOccurs != 1 ;
@@ -756,12 +750,6 @@ public:
 		else
 		{
 			lval = getCppName();
-		}
-		if (isArray())
-		{
-			lval += "[" ;
-			lval += getIndexVar();
-			lval += "]";
 		}
 		return lval.c_str();
 	}
