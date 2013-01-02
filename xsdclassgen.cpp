@@ -228,7 +228,7 @@ std::string MakeIdentifier(const char * prefix,const char * name)
 		str += prefix ;
 	while(*name)
 	{
-		char c = *name++;
+		unsigned char c = *name++;
 		if (!isalnum(c) && c != '_')
 		{
 			char n[8];
@@ -776,20 +776,20 @@ xsdExtension * ParseExtension(xmlNodePtr ext,xsdType * parent,Symtab & st)
 {
 	xsd_keyword kw ;
 	xsdExtension * xsdext = NULL;
-	xsdTypename  * basetypename = NULL;
+	xsdType  * base = NULL;
 	for_each_attr(attr,ext)
 	{
 		kw = Lookup(attr->name);
 		switch(kw)
 		{
 			case	xsd_base:
-				basetypename = new xsdTypename(getContent(attr->children));
+				base = FindType(getContent(attr->children));
 			break ;
 			default:
 			break ;
 		}
 	}
-	xsdext = new xsdExtension(basetypename,parent);
+	xsdext = new xsdExtension(base,parent);
 	for_each_child(child,ext)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -1384,6 +1384,7 @@ const char * xsdType::getNativeName()
 
 		default:
 			name =getCppName();
+		break ;
 	}
 	return name ;
 }
@@ -1556,11 +1557,9 @@ void xsdExtension::CalcDependency(xsdTypeList & list)
 {
 	if (tascd())
 		return ;
-	if (m_basetypename != NULL)
+	if (m_base != NULL)
 	{
-		xsdType * type = FindType(m_basetypename);
-		if (type != NULL)
-			type->CalcDependency(list);
+		m_base->CalcDependency(list);
 		for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
 		{
 			xsdAttribute * attr = *ai;

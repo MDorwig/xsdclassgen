@@ -502,18 +502,18 @@ public:
 class xsdExtension : public xsdType
 {
 public:
-	xsdExtension(xsdTypename * basetypename,xsdType * parent) : xsdType("",type_extension,parent)
+	xsdExtension(xsdType * base,xsdType * parent) : xsdType("",type_extension,parent)
 	{
-		m_basetypename = basetypename;
+		m_base = base;
 	}
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 //	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	bool hasAttributes() { return !m_attributes.empty();}
 
-
-	xsdTypename * m_basetypename ;
+	xsdType     * m_base ;
 	xsdAttrList   m_attributes;
 };
 
