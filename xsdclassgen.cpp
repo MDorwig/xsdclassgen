@@ -1682,7 +1682,7 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 	{
 		if (m_typename == NULL)
 		{
-			m_typename = new xsdTypename("xs:integer");
+			m_typename = new xsdTypename("xs:string");
 		}
 		if (m_typename != NULL)
 		{

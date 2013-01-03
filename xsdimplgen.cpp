@@ -78,13 +78,26 @@ void GenWriteElementCases(CppFile & out,Symtab & st,xsdElementList & elements)
 {
 	for (elementIterator ei = elements.begin() ; ei != elements.end() ; ei++)
 	{
+		int indent = 2 ;
 		xsdElement * elem = *ei ;
 		Symbol * s = st.find(elem->getName());
 		if (s != NULL)
 		{
-			out.iprintln(2,"case sy_%s:",s->m_cname.c_str());
-			out.iprintln(3,  "if ((*m_choice.%s).isset())",elem->getCppName());
+			const char * name = elem->getName();
+			out.iprintln(indent++,"case xs_choice::%s:",elem->m_choice_selector.c_str());
+			out.iprintln(indent,  "if ((*m_choice.%s).isset())",elem->getCppName());
+			out.iprintln(indent++,"{");
+			if (elem->hasAttributes())
+			{
+				out.iprintln(indent,"out.putrawstring(\"<%s\");",name);
+				elem->GenWriteAttr(out,indent);
+				out.iprintln(indent,"out.putrawstring(\">\");");
+			}
+			else
+				out.iprintln(indent,"out.putrawstring(\"<%s>\");",name);
 			out.iprintln(4,   "(*m_choice.%s).Write(out);",elem->getCppName());
+			out.iprintln(4,  "out.putrawstring(\"</%s>\");",name);
+			out.iprintln(3,  "}");
 			out.iprintln(2,"break;");
 		}
 	}
@@ -107,18 +120,32 @@ void GenWriteElem(CppFile & out,int indent,xsdElement * elem)
 	std::string var = elem->getCppName();
 	if (elem->isArray())
 		var += "[i]";
-	out.iprintln(indent,"if (%s.isset())",var.c_str());
+	out.iprintln(indent,   "if (%s.isset())",var.c_str());
 	out.iprintln(indent++,"{");
-	if (elem->hasAttributes())
+	if (elem->m_type->isString())
 	{
-		out.iprintln(indent,"out.putrawstring(\"<%s\");",name);
-		elem->GenWriteAttr(out,indent);
-		out.iprintln(indent,"out.putrawstring(\">\");");
+		out.iprintln(indent,    "if (%s.empty())",var.c_str());
+		out.iprintln(indent+1,    "out.putrawstring(\"<%s/>\");",name);
+		out.iprintln(indent,    "else");
+		out.iprintln(indent++,  "{");
+		out.iprintln(indent,      "out.putrawstring(\"<%s>\");",name);
+	  out.iprintln(indent,      "%s.Write(out);",var.c_str());
+	  out.iprintln(indent,      "out.putrawstring(\"</%s>\");",name);
+		out.iprintln(--indent,  "}");
 	}
 	else
-		out.iprintln(indent,"out.putrawstring(\"<%s>\");",name);
-	out.iprintln(indent,"%s.Write(out);",var.c_str());
-	out.iprintln(indent,"out.putrawstring(\"</%s>\");",elem->getName());
+	{
+		if (elem->hasAttributes())
+		{
+			out.iprintln(indent,"out.putrawstring(\"<%s\");",name);
+			elem->GenWriteAttr(out,indent);
+			out.iprintln(indent,"out.putrawstring(\">\");");
+		}
+		else
+			out.iprintln(indent,"out.putrawstring(\"<%s>\");",name);
+		out.iprintln(indent,"%s.Write(out);",var.c_str());
+		out.iprintln(indent,"out.putrawstring(\"</%s>\");",elem->getName());
+	}
 	out.iprintln(--indent,"}");
 }
 
@@ -231,7 +258,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 			out.iprintln(indent,    "%s = elem;",elem->getCppName());
 			out.iprintln(--indent,"}");
 		}
-
+		out.iprintln(indent,"bool isset() const { return m_selected != e_none_selected; }");
 		m_elements.GenHeader(out,indent);
 		/*
 		 * generate constructor to initialize the choices to NULL
@@ -532,6 +559,15 @@ void xsdTypeList::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	}
 }
 
+void xsdTypeList::GenWrite(CppFile & out,Symtab & st)
+{
+	for (typeIterator ti = begin() ; ti != end() ; ti++)
+	{
+		xsdType * type = *ti ;
+		type->GenWrite(out,st);
+	}
+}
+
 void xsdType::GenHeader(CppFile & out,int indent,const char * defaultstr)
 {
 
@@ -633,6 +669,11 @@ void xsdEnum::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	out.iprintln(indent,"void set(%s v) { m_value = v; m_bset = true;} ",enumname) ;
 	out.iprintln(indent,"const char * gets() const;") ;
 	out.iprintln(indent,"%s get() const { return m_value;}",enumname) ;
+	for (si = m_values.begin() ; si != m_values.end() ; si++)
+	{
+		xsdEnumValue * v = *si ;
+		out.iprintln(indent,"void set_%s() { set(%s); }",v->getEnumValue(),v->getEnumValue());
+	}
 	out.iprintln(indent,"bool isset() const { return m_bset;}") ;
 	out.iprintln(indent,"private:") ;
 	out.iprintln(indent,"%s m_value;",enumname);
