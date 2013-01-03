@@ -50,7 +50,16 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 		out.iprintln(indent,"if (%s.isset())",elem->getlvalue()) ;
 		out.iprintln(indent+1,"return true;") ;
 	}
-	out.iprintln(indent,"return false;") ;
+	for (typeIterator ti = m_types.begin() ; ti != m_types.end() ; ti++)
+	{
+		xsdType * type = * ti ;
+		if (type->m_tag == type_choice)
+		{
+			out.iprintln(indent,"if (m_choice.isset())");
+			out.iprintln(indent+1,"return true;") ;
+		}
+	}
+	out.iprintln(indent,"return false;");
 	out.iprintln(--indent,"};\n");
 
 	m_parent->GenAttrHeader(out,indent);
@@ -77,6 +86,7 @@ void xsdSequence::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
 void xsdSequence::GenWrite(CppFile & out,Symtab & st)
 {
 	GenWriteElements(out,m_elements);
+	m_types.GenWrite(out,st);
 }
 
 

@@ -166,6 +166,7 @@ public:
 	void GenHeader(CppFile & out,int indent,const char * defaultstr,bool choice);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenWrite(CppFile & out,Symtab & st);
 	static int nextlistno;
 	int  listno;
 };
