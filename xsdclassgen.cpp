@@ -965,39 +965,39 @@ xsdRestriction * ParseRestriction(xmlNodePtr rest,xsdType * parent,Symtab & st)
 				break ;
 
 				case	xsd_minExclusive:
-					xsdrest->m_minExclusive = getIntAttr(child,"value");
+					xsdrest->m_minExclusive.set(getIntAttr(child,"value"));
 				break ;
 
 				case	xsd_maxExclusive:
-					xsdrest->m_maxExclusive = getIntAttr(child,"value");;
+					xsdrest->m_maxExclusive.set(getIntAttr(child,"value"));
 				break ;
 
 				case	xsd_minInclusive:
-					xsdrest->m_minInclusive = getIntAttr(child,"value");;
+					xsdrest->m_minInclusive.set(getIntAttr(child,"value"));
 				break ;
 
 				case	xsd_maxInclusive:
-					xsdrest->m_maxInclusive = getIntAttr(child,"value");;
+					xsdrest->m_maxInclusive.set(getIntAttr(child,"value"));
 				break ;
 
 				case	xsd_totalDigits:
-					xsdrest->m_totalDigits = getIntAttr(child,"value");
+					xsdrest->m_totalDigits.set(getIntAttr(child,"value"));
 				break ;
 
 				case	xsd_fractionDigits:
-					xsdrest->m_fractionDigits= getIntAttr(child,"value");
+					xsdrest->m_fractionDigits.set(getIntAttr(child,"value"));
 				break ;
 
 				case xsd_length:
-					xsdrest->m_length = getIntAttr(child,"value");
+					xsdrest->m_length.set(getIntAttr(child,"value"));
 				break ;
 
 				case xsd_minLength:
-					xsdrest->m_minLength = getIntAttr(child,"value");
+					xsdrest->m_minLength.set(getIntAttr(child,"value"));
 				break ;
 
 				case xsd_maxLength:
-					xsdrest->m_maxLength = getIntAttr(child,"value");
+					xsdrest->m_maxLength.set(getIntAttr(child,"value"));
 				break ;
 
 				case	xsd_annotation:
@@ -1846,7 +1846,36 @@ int main(int argc, char * argv[])
 		hfile.println("#include <string.h>");
 		hfile.println("#include <libxml/parser.h>");
 		hfile.println("#include \"xsdtypes.h\"");
+		hfile.println("#include <exception>");
 		hfile.println();
+		hfile.println("class xs_invalidInteger : public std::exception");
+		hfile.println("{");
+		hfile.println("public:");
+		hfile.println("  xs_invalidInteger(int val) throw()");
+		hfile.println("  {");
+		hfile.println("    m_text.format(\"value=%%d\",val);");
+		hfile.println("  }");
+	  hfile.println("  ~xs_invalidInteger() throw() {}");
+		hfile.println("  const char * what() const throw()");
+		hfile.println("  {");
+		hfile.println("    return m_text.gets();");
+		hfile.println("  }");
+		hfile.println("  xs_string m_text;");
+		hfile.println("};\n");
+		hfile.println("class xs_invalidString: public std::exception");
+		hfile.println("{");
+		hfile.println("public:");
+		hfile.println("  xs_invalidString(const char * str) throw()");
+		hfile.println("  {");
+		hfile.println("    m_text.sets(str);");
+		hfile.println("  }");
+	  hfile.println("  ~xs_invalidString() throw() {}");
+		hfile.println("  const char * what() const throw()");
+		hfile.println("  {");
+		hfile.println("    return m_text.gets();");
+		hfile.println("  }");
+		hfile.println("  xs_string m_text;");
+		hfile.println("};\n");
 		cppfile.println("#include \"%s\"",hfileinclude.c_str());
 		cppfile.println();
 		cppfile.println("#define for_each_child(child,node) for (xmlNodePtr child = node->children   ; child != NULL ; child = child->next)");

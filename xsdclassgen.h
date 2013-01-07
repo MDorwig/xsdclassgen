@@ -454,21 +454,34 @@ public:
 	xsdTypeList m_types ;
 };
 
+class xsdRestictionValue
+{
+public:
+	xsdRestictionValue()
+	{
+		m_value = 0 ;
+		m_bset  = false ;
+	}
+
+	void set(int value)
+	{
+		m_value= value;
+		m_bset = true;
+	}
+
+	int get() const   {return m_value;}
+	int isset() const {return m_bset;}
+private:
+	int  m_value ;
+	bool m_bset;
+};
+
 class xsdRestriction: public xsdType
 {
 public:
 	xsdRestriction(xsdType * parent) : xsdType("",type_restriction,parent)
 	{
-		m_minExclusive = 0 ;
-		m_minInclusive = 0 ;
-		m_maxExclusive = 0 ;
-		m_maxInclusive = 0 ;
-		m_totalDigits = 0 ;
-		m_fractionDigits = 0 ;
-		m_length = 0 ;
-		m_minLength = 0 ;
-		m_maxLength = 1 ;
-		m_whiteSpace = 0 ;
+		m_maxLength.set(1) ;
 		m_base = NULL;
 		m_simple = NULL;
 		m_enum = NULL;
@@ -488,16 +501,16 @@ public:
 	xsdType       * m_base ;
 	xsdEnum       * m_enum;
 	xsdSimpleType * m_simple;
-	int m_minExclusive;
-	int m_minInclusive;
-	int m_maxExclusive;
-	int m_maxInclusive;
-	int m_totalDigits;
-	int m_fractionDigits;
-	int m_length;
-	int m_minLength;
-	int m_maxLength;
-	int m_whiteSpace;
+	xsdRestictionValue 	m_minExclusive;
+	xsdRestictionValue 	m_minInclusive;
+	xsdRestictionValue 	m_maxExclusive;
+	xsdRestictionValue	m_maxInclusive;
+	xsdRestictionValue	m_totalDigits;
+	xsdRestictionValue	m_fractionDigits;
+	xsdRestictionValue	m_length;
+	xsdRestictionValue	m_minLength;
+	xsdRestictionValue	m_maxLength;
+	xsdRestictionValue	m_whiteSpace;
 };
 
 class xsdExtension : public xsdType
