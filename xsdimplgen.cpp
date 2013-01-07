@@ -716,7 +716,7 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 		  xsdEnumValue * val = *ei ;
 			out.iprintln(2,"case sy_%s: m_value = %s; m_bset = true ; break;",val->getSymbolName(),val->getEnumValue());
 	  }
-	    out.iprintln(2,"default: m_value = %s_invalid; m_bset = false ; break;",getCppName());
+	    out.iprintln(2,"default: throw xs_invalidString(str) ; break;");
 	  out.iprintln(1,"}");
 	out.iprintln(0,"}\n");
 	out.iprintln(0,"void %s::Write(xmlStream & out)",qname.c_str());
@@ -793,10 +793,29 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 			out.iprintln(indent++,"{");
 			out.iprintln(indent,     "m_value = val;");
 			out.iprintln(--indent,"}");
-			if (m_base->isInteger())
+			if (m_base->isScalar())
 			{
 				out.iprintln(indent,   "void set(%s val)",m_base->getNativeName());
 				out.iprintln(indent++,"{");
+				if      (m_minExclusive.isset() && m_maxExclusive.isset())
+					out.iprintln(indent,"if(val <= %d || val >= %d) throw new xs_invalidInteger(val);",m_minExclusive.get(),m_maxExclusive.get());
+				else if (m_minExclusive.isset() && m_maxInclusive.isset())
+					out.iprintln(indent,"if(val <= %d || val > %d) throw new xs_invalidInteger(val);",m_minExclusive.get(),m_maxInclusive.get());
+				else if (m_minInclusive.isset() && m_maxExclusive.isset())
+					out.iprintln(indent,"if(val < %d || val >= %d) throw new xs_invalidInteger(val);",m_minInclusive.get(),m_maxExclusive.get());
+				else if (m_minInclusive.isset() && m_maxInclusive.isset())
+					out.iprintln(indent,"if(val < %d || val >  %d) throw new xs_invalidInteger(val);",m_minInclusive.get(),m_maxInclusive.get());
+				else
+				{
+					if (m_minExclusive.isset())
+						out.iprintln(indent,"if(val <= %d) throw new xs_invalidInteger(val);",m_minExclusive.get());
+					else if (m_maxExclusive.isset())
+						out.iprintln(indent,"if(val >= %d) throw new xs_invalidInteger(val);",m_maxExclusive.get());
+					else if (m_minInclusive.isset())
+						out.iprintln(indent,"if(val < %d) throw new xs_invalidInteger(val);",m_minInclusive.get());
+					else if (m_maxInclusive.isset())
+						out.iprintln(indent,"if(val > %d) throw new xs_invalidInteger(val);",m_maxInclusive.get());
+				}
 				out.iprintln(indent,    "m_value.set(val);");
 				out.iprintln(--indent,"}");
 			}
