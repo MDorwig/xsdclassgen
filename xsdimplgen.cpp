@@ -784,7 +784,44 @@ void xsdRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 			 */
 			out.iprintln(indent,  "void sets(const char * str)");
 			out.iprintln(indent++,"{");
-			out.iprintln(indent,  "m_value.sets(str);");
+			if (m_base->isScalar())
+			{
+				out.iprintln(indent,    "%s v;",m_base->getNativeName());
+				out.iprintln(indent,    "v = %s::Parse(str);",m_base->getCppName());
+				out.iprintln(indent,  "m_value.set(v);");
+			}
+			else if (m_base->isString())
+			{
+				if (m_length.isset())
+				{
+					out.iprintln(indent,"int len = strlen(str);");
+					out.iprintln(indent,"if (len != %d)",m_length.get());
+					out.iprintln(indent,"  throw new xs_invalidString(str);");
+				}
+				else if (m_minLength.isset() && m_maxLength.isset())
+				{
+					out.iprintln(indent,"int len = strlen(str);");
+					out.iprintln(indent,"if (len < %d || len > %d)",m_minLength.get(),m_maxLength.get());
+					out.iprintln(indent,"  throw new xs_invalidString(str);");
+				}
+				else if (m_minLength.isset())
+				{
+					out.iprintln(indent,"int len = strlen(str);");
+					out.iprintln(indent,"if (len < %d)",m_minLength.get());
+					out.iprintln(indent,"  throw new xs_invalidString(str);");
+				}
+				else if (m_maxLength.isset())
+				{
+					out.iprintln(indent,"int len = strlen(str);");
+					out.iprintln(indent,"if (len > %d)",m_maxLength.get());
+					out.iprintln(indent,"  throw new xs_invalidString(str);");
+				}
+				out.iprintln(indent,  "m_value.sets(str);");
+			}
+			else
+			{
+				out.iprintln(indent,  "m_value.sets(str);");
+			}
 			out.iprintln(--indent,"}");
 			/*
 			 * generate set/get function
