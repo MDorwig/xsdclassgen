@@ -14,7 +14,13 @@
 
 void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 {
-	out.iprintln(indent,"struct %s",getCppName());
+	xsdType * base = NULL;
+	if (m_parent->m_tag == type_complexExtension)
+		base = ((xsdComplexExtension*)m_parent)->m_base;
+	if (base != NULL)
+		out.iprintln(indent,"struct %s : public %s",getCppName(),base->getCppName());
+	else
+		out.iprintln(indent,"struct %s",getCppName());
 	out.iprintln(indent++,"{");
 	if (m_elements.hasPointer())
 	{
@@ -44,6 +50,11 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	 */
 	out.iprintln(indent,"bool isset() const ");
 	out.iprintln(indent++,"{");
+	if (base != NULL)
+	{
+		out.iprintln(indent,"if (%s::isset())",base->getCppName());
+		out.iprintln(indent+1,"return true;") ;
+	}
 	for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
 	{
 		xsdElement * elem = *ei ;
@@ -70,8 +81,15 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 
 void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 {
+	xsdType * base = NULL;
 	if (tascpp())
 		return ;
+	if (m_parent->m_tag == type_complexExtension)
+		base = ((xsdComplexExtension*)m_parent)->m_base;
+	if (base != NULL)
+	{
+		out.iprintln(1,"%s::Parse(node);",base->getCppName());
+	}
 	GenParserChildLoopStart(out,m_elements);
 	GenElementCases(out,st,m_elements,false);
 	m_types.GenImpl(out,st,defaultstr);
