@@ -229,17 +229,10 @@ std::string MakeIdentifier(const char * prefix,const char * name)
 	while(*name)
 	{
 		unsigned char c = *name++;
-		if (!isalnum(c) && c != '_')
-		{
-			char n[8];
-			if (*name)
-				sprintf(n,"_x%02x_",c);
-			else
-				sprintf(n,"_x%02x",c);
-			str += n ;
-		}
-		else
+		if (isalnum(c) || c == '_')
 			str += c ;
+		else if (c == '-' || c == '.')
+			str += '_';
 	}
 	return str ;
 }
@@ -399,7 +392,7 @@ void not_supported_error(xmlNodePtr e,xmlDocPtr doc)
 	printf("%s:%d \"%s\" not supported in \"%s\"\n",doc->URL,e->line,e->name,doc->name);
 }
 
-xsdRestriction * ParseRestriction(xmlNodePtr rest,xsdType * parent,Symtab & st);
+xsdSimpleRestriction * ParseSimpleRestriction(xmlNodePtr rest,xsdType * parent,Symtab & st);
 xsdComplexType * ParseComplexType(xmlNodePtr type,xsdElement * elem,xsdType * parent,Symtab & st);
 xsdSimpleType  * ParseSimpleType(xmlNodePtr type,const char * elemname,xsdType * parent,Symtab & st);
 xsdChoice      * ParseChoice(xmlNodePtr choice,xsdType * ,Symtab & st);
@@ -475,6 +468,8 @@ xsdAttribute   * ParseAttribute(xmlNodePtr node,xsdType * parent,Symtab & st)
 			}
 		}
 	}
+	if (xsdtype == NULL)
+		xsdtype = FindType("xs:string");
 	st.m_hasAttributes = true ;
 	xsdAttribute * xsdattr = new xsdAttribute(xsdname,xsddefault,xsdfixed,use,xsdtype);
 	return xsdattr;
@@ -772,24 +767,24 @@ xsdChoice * ParseChoice(xmlNodePtr choice,xsdType * parent,Symtab & st)
 	return xsdchoice;
 }
 
-xsdExtension * ParseExtension(xmlNodePtr ext,xsdType * parent,Symtab & st)
+xsdSimpleExtension * ParseSimpleExtension(xmlNodePtr ext,xsdType * parent,Symtab & st)
 {
 	xsd_keyword kw ;
-	xsdExtension * xsdext = NULL;
-	xsdType  * base = NULL;
+	xsdSimpleExtension * xsdext = NULL;
+	const char * base = NULL;
 	for_each_attr(attr,ext)
 	{
 		kw = Lookup(attr->name);
 		switch(kw)
 		{
 			case	xsd_base:
-				base = FindType(getContent(attr->children));
+				base = getContent(attr->children);
 			break ;
 			default:
 			break ;
 		}
 	}
-	xsdext = new xsdExtension(base,parent);
+	xsdext = new xsdSimpleExtension(base,parent);
 	for_each_child(child,ext)
 	{
 		if (child->type == XML_ELEMENT_NODE)
@@ -825,11 +820,11 @@ xsdSimpleContent * ParseSimpleContent(xmlNodePtr cont,xsdType * parent,Symtab & 
 			switch(kw)
 			{
 				case	xsd_restriction:
-					xsdcontent->m_content = ParseRestriction(child,xsdcontent,st);
+					xsdcontent->m_content = ParseSimpleRestriction(child,xsdcontent,st);
 				break ;
 
 				case	xsd_extension:
-					xsdcontent->m_content = ParseExtension(child,xsdcontent,st);
+					xsdcontent->m_content = ParseSimpleExtension(child,xsdcontent,st);
 				break ;
 
 				case	xsd_annotation:
@@ -842,6 +837,91 @@ xsdSimpleContent * ParseSimpleContent(xmlNodePtr cont,xsdType * parent,Symtab & 
 		}
 	}
 	return xsdcontent;
+}
+
+xsdComplexExtension * ParseComplexExtension(xmlNodePtr type,xsdType * parent,Symtab & st)
+{
+	xsd_keyword kw ;
+	xsdComplexExtension * ext = NULL;
+	const char * base = NULL;
+	for_each_attr(attr,type)
+	{
+		kw = Lookup(attr->name);
+		switch(kw)
+		{
+			case xsd_base:
+				base = getContent(attr->children);
+			break ;
+			default:
+				not_supported_error(attr,type);
+			break ;
+		}
+	}
+	ext = new xsdComplexExtension(base,parent);
+	for_each_child(child,type)
+	{
+		if (child->type == XML_ELEMENT_NODE)
+		{
+			kw = Lookup(child->name);
+			switch(kw)
+			{
+				case	xsd_choice:
+					ext->m_type = ParseChoice(child,ext,st);
+				break ;
+				case	xsd_sequence:
+					ext->m_type = ParseSequence(child,ext,st);
+				break ;
+				case	xsd_all:
+					ext->m_type = ParseAll(child,ext,st);
+				break ;
+				case	xsd_attribute:
+					ext->m_attributes.push_back(ParseAttribute(child,ext,st));
+				break ;
+				default:
+					not_supported_error(child,type);
+				break ;
+			}
+		}
+	}
+	return ext;
+}
+
+xsdComplexRestriction * ParseComplexRestriction(xmlNodePtr type,xsdType * parent,Symtab & st)
+{
+	return NULL;
+}
+
+xsdComplexContent * ParseComplexContent(xmlNodePtr type,xsdElement * elem,xsdType * parent,Symtab & st)
+{
+	xsd_keyword kw ;
+	xsdComplexContent * newtype = new xsdComplexContent(NULL,NULL,parent);
+	for_each_child(child,type)
+	{
+		if (child->type == XML_ELEMENT_NODE)
+		{
+			kw = Lookup(child->name);
+			switch(kw)
+			{
+				case	xsd_extension:
+				{
+					newtype->m_type =  ParseComplexExtension(child,newtype,st);
+				}
+				break ;
+
+				case	xsd_restriction:
+					newtype->m_type = ParseComplexRestriction(child,newtype,st);
+				break ;
+
+				case	xsd_annotation:
+				break ;
+
+				default:
+					not_supported_error(child,type);
+				break ;
+			}
+		}
+	}
+	return newtype ;
 }
 
 xsdComplexType * ParseComplexType(xmlNodePtr type,xsdElement * elem,xsdType * parent,Symtab & st)
@@ -889,6 +969,10 @@ xsdComplexType * ParseComplexType(xmlNodePtr type,xsdElement * elem,xsdType * pa
 					newtype->m_type = ParseSimpleContent(child,newtype,st);
 				break ;
 
+				case	xsd_complexContent:
+					newtype->m_type = ParseComplexContent(child,elem,newtype,st);
+				break ;
+
 				case	xsd_annotation:
 				break ;
 
@@ -930,9 +1014,9 @@ int getIntAttr(xmlNodePtr ptr,const char * name)
 	return 0 ;
 }
 
-xsdRestriction * ParseRestriction(xmlNodePtr rest,xsdType * parent,Symtab & st)
+xsdSimpleRestriction * ParseSimpleRestriction(xmlNodePtr rest,xsdType * parent,Symtab & st)
 {
-	xsdRestriction * xsdrest = new xsdRestriction(parent);
+	xsdSimpleRestriction * xsdrest = new xsdSimpleRestriction(NULL,parent);
 	xsd_keyword kw ;
 	for_each_attr(attr,rest)
 	{
@@ -1137,7 +1221,7 @@ xsdSimpleType * ParseSimpleType(xmlNodePtr type,const char * elemname,xsdType * 
 			switch(kw)
 			{
 				case	xsd_restriction:
-					xsdtype->m_rest  = ParseRestriction(child,xsdtype,st);
+					xsdtype->m_rest  = ParseSimpleRestriction(child,xsdtype,st);
 				break ;
 
 				case	xsd_list:
@@ -1257,10 +1341,42 @@ xsdSchema * ParseSchema(xmlNodePtr schema,Symtab & st)
 
 	for_each_nsdef(nsdef,schema)
 	{
-		if (nsdef->type == XML_NAMESPACE_DECL && nsdef->prefix != NULL)
+		if (nsdef->type == XML_NAMESPACE_DECL)
 		{
-			printf("new namespace prefix:\"%s\" href=\"%s\"\n",nsdef->prefix,nsdef->href);
-			AddNamespace((const char*)nsdef->prefix,(const char*)nsdef->href);
+			xsdNamespace * ns ;
+			if (nsdef->prefix != NULL)
+			{
+				printf("new namespace prefix:\"%s\" href=\"%s\"\n",nsdef->prefix,nsdef->href);
+				ns = AddNamespace((const char*)nsdef->prefix,(const char*)nsdef->href);
+				if (strstr((const char*)nsdef->href,"XMLSchema") != NULL)
+				{
+					ns->AddType(new xsdType("int",type_int,NULL,true));
+					ns->AddType(new xsdType("string",type_string,NULL,true));
+					ns->AddType(new xsdType("boolean",type_boolean,NULL,true));
+					ns->AddType(new xsdType("decimal",type_decimal,NULL,true));
+					ns->AddType(new xsdType("float",type_float,NULL,true));
+					ns->AddType(new xsdType("double",type_double,NULL,true));
+					ns->AddType(new xsdType("integer",type_integer,NULL,true));
+					ns->AddType(new xsdType("long",type_long,NULL,true));
+					ns->AddType(new xsdType("short",type_short,NULL,true));
+					ns->AddType(new xsdType("byte",type_byte,NULL,true));
+					ns->AddType(new xsdType("nonNegativeInteger",type_nonNegativeInteger,NULL,true));
+					ns->AddType(new xsdType("positiveInteger",type_positiveInteger,NULL,true));
+					ns->AddType(new xsdType("unsignedLong",type_unsignedLong,NULL,true));
+					ns->AddType(new xsdType("unsignedInt",type_unsignedInt,NULL,true));
+					ns->AddType(new xsdType("unsignedShort",type_unsignedShort,NULL,true));
+					ns->AddType(new xsdType("unsignedByte",type_unsignedByte,NULL,true));
+					ns->AddType(new xsdType("unsignedPositiveInteger",type_positiveInteger,NULL,true));
+					ns->AddType(new xsdType("dateTime",type_dateTime,NULL,true));
+					ns->AddType(new xsdType("anyURI",type_string,NULL,true));
+				}
+			}
+			else
+			{
+				ns = FindNamespace("");
+				if (ns == NULL)
+					AddNamespace("",(const char*)nsdef->href);
+			}
 		}
 	}
 
@@ -1341,9 +1457,12 @@ const char * xsdType::getCppName()
 		case	type_dateTime:           name = "xs_dateTime";            break ;
 		case  type_all:
 		case	type_enum:
-		case	type_restriction:
-		case	type_extension:
+		case	type_simpleRestriction:
+		case	type_simpleExtension:
+		case  type_complexExtension:
+		case  type_complexRestriction:
 		case	type_simpleContent:
+		case	type_complexContent:
 		case	type_list:
 		case	type_union:
 		case	type_simple:
@@ -1463,6 +1582,23 @@ bool  xsdType::isString()
 	return m_tag == type_string;
 }
 
+bool xsdType::isStruct()
+{
+	bool res = false ;
+	switch(m_tag)
+	{
+		case	type_all:
+		case  type_sequence:
+		case	type_choice:
+			res = true;
+		break ;
+
+		default:
+		break ;
+	}
+	return res;
+}
+
 std::string xsdType::getQualifiedName()
 {
 	std::string res ;
@@ -1535,12 +1671,14 @@ void xsdList::CalcDependency(xsdTypeList & list)
 		m_itemtype->CalcDependency(list);
 }
 
-void xsdRestriction::CalcDependency(xsdTypeList & list)
+void xsdSimpleRestriction::CalcDependency(xsdTypeList & list)
 {
 	if (tascd())
 		return ;
 	if (m_base != NULL)
 		m_base->CalcDependency(list);
+	if (m_enum != NULL)
+		m_enum->CalcDependency(list);
 	if (m_simple != NULL)
 		m_simple->CalcDependency(list);
 }
@@ -1553,10 +1691,18 @@ void xsdAttribute::CalcDependency(xsdTypeList & list)
 }
 #endif
 
-void xsdExtension::CalcDependency(xsdTypeList & list)
+void xsdSimpleExtension::CalcDependency(xsdTypeList & list)
 {
 	if (tascd())
 		return ;
+	if (m_base == NULL)
+	{
+		m_base = FindType(m_basetypename);
+		if (m_base == NULL)
+		{
+			printf("type \"%s\" not found\n",m_basetypename->m_name.c_str());
+		}
+	}
 	if (m_base != NULL)
 	{
 		m_base->CalcDependency(list);
@@ -1566,6 +1712,8 @@ void xsdExtension::CalcDependency(xsdTypeList & list)
 			attr->CalcDependency(list);
 		}
 	}
+	if (m_exttype != NULL)
+		m_exttype->CalcDependency(list);
 }
 
 void xsdSequenceList::CalcDependency(xsdTypeList & list)
@@ -1715,14 +1863,6 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 				printf("%s cyclic ref to %s\n",getName(),m_type->getName());
 		}
 	}
-}
-
-bool xsdElement::hasAttributes()
-{
-	bool res = false ;
-	if (m_type != NULL)
-		res = m_type->hasAttributes();
-	return res ;
 }
 
 void xsdElementList::CalcDependency(xsdTypeList & list)
@@ -1883,24 +2023,6 @@ int main(int argc, char * argv[])
 		cppfile.println();
 
 
-		AddNamespace("xs","http://www.w3.org/2009/xml.xsd");
-		AddType(new xsdType("xs:int",type_int,NULL,true));
-		AddType(new xsdType("xs:string",type_string,NULL,true));
-		AddType(new xsdType("xs:boolean",type_boolean,NULL,true));
-		AddType(new xsdType("xs:decimal",type_decimal,NULL,true));
-		AddType(new xsdType("xs:float",type_float,NULL,true));
-		AddType(new xsdType("xs:double",type_double,NULL,true));
-		AddType(new xsdType("xs:integer",type_integer,NULL,true));
-		AddType(new xsdType("xs:long",type_long,NULL,true));
-		AddType(new xsdType("xs:short",type_short,NULL,true));
-		AddType(new xsdType("xs:byte",type_byte,NULL,true));
-		AddType(new xsdType("xs:nonNegativeInteger",type_nonNegativeInteger,NULL,true));
-		AddType(new xsdType("xs:unsignedLong",type_unsignedLong,NULL,true));
-		AddType(new xsdType("xs:unsignedInt",type_unsignedInt,NULL,true));
-		AddType(new xsdType("xs:unsignedShort",type_unsignedShort,NULL,true));
-		AddType(new xsdType("xs:unsignedByte",type_unsignedByte,NULL,true));
-		AddType(new xsdType("xs:unsignedPositiveInteger",type_positiveInteger,NULL,true));
-		AddType(new xsdType("xs:dateTime",type_dateTime,NULL,true));
 		Symtab symtab ;
 		for_each_child(child,doc)
 		{
@@ -1999,30 +2121,6 @@ void xsdComplexContent::CalcDependency(xsdTypeList& list)
 	;
 	if (m_type != NULL)
 		m_type->CalcDependency(list);
-}
-
-void xsdComplexContent::GenHeader(CppFile& out, int indent,const char* defaultstr)
-{
-	if (!tashdr())
-	{
-		if (m_type != NULL)
-			m_type->GenHeader(out,indent,defaultstr);
-	}
-}
-
-void xsdComplexContent::GenImpl(CppFile& out, Symtab& st,const char* defaultstr)
-{
-	if (tascpp() || m_type == NULL)
-		return ;
-	m_type->GenImpl(out,st,defaultstr);
-}
-
-void xsdComplexContent::GenLocal(CppFile& out, Symtab& st,const char* defaultstr)
-{
-	if (m_type != NULL)
-	{
-		m_type->GenLocal(out,st,defaultstr);
-	}
 }
 
 

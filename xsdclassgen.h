@@ -26,7 +26,7 @@ typedef std::list<xsdType*>::iterator typeIterator;
 
 std::string MakeIdentifier(const char * prefix,const char * name);
 
-class xsdTypename // für vorwärtsdeclarationen
+class xsdTypename // für Vorwärtsdeklarationen
 {
 public:
 	xsdTypename(const char * name)
@@ -98,7 +98,8 @@ enum typetag
 	type_double,
 	type_duration,
 	type_dateTime,
-	type_extension,
+	type_simpleExtension,
+	type_complexExtension,
 	type_simpleContent,
 	type_time,
 	type_date,
@@ -144,7 +145,8 @@ enum typetag
 	type_complex,
 	type_complexContent,
 	type_simple,
-	type_restriction,
+	type_simpleRestriction,
+	type_complexRestriction,
 	type_sequence,
 	type_list,
 	type_union,
@@ -217,6 +219,8 @@ public:
 	virtual void GenHeader(CppFile & out,int indent){}
 	virtual const char * getlvalue() { return getCppName();}
 	virtual const char * getChoiceName() { return "";}
+	const char * getDefault() { return m_default.c_str();	}
+
 };
 
 class xsdAttribute : public xsdAttrElemBase
@@ -236,6 +240,7 @@ public:
 		m_fixed   = fixed;
 	}
 	void GenHeader(CppFile & out,int indent);
+	void GenLocal(CppFile & out,Symtab & st);
 	void CalcDependency(xsdTypeList & list);
 	void GenWrite(CppFile & out,int indent, xsdElement * elem);
 
@@ -247,6 +252,7 @@ class xsdAttrList : public std::list<xsdAttribute*>
 {
 public:
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st);
 	void GenWrite(CppFile & out,int indent,xsdElement * elem);
 };
 
@@ -288,6 +294,11 @@ public:
 	{
 	}
 
+	virtual	void GetAttributes(xsdAttrList & list)
+	{
+
+	}
+
 	virtual void CalcDependency(xsdTypeList & list)
 	{
 	}
@@ -298,7 +309,7 @@ public:
 	virtual bool  isfloat();
 	virtual bool  isString();
 	virtual bool  isScalar();
-	virtual	bool  hasAttributes() { return false;}
+	virtual bool  isStruct();
 
 	//virtual int   getDim() { return 1 ;}
 
@@ -366,12 +377,14 @@ public:
 	virtual void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	virtual void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	virtual void GenWrite(CppFile & out,Symtab & st) {}
-	virtual void GenWriteAttr(CppFile & out,int ident,xsdElement * elem) {}
+	virtual void GenWriteAttr(CppFile & out,int indent,xsdElement * elem);
 	virtual void GenAttrHeader(CppFile & out,int indent) {}
 	virtual void GenLocal(CppFile & out,Symtab & st,const char * defaultstr) {}
 	virtual void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & elem,const char * src);
 	virtual void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	virtual bool CheckCycle(xsdElement * elem) { return false;}
+	virtual bool hasAttributes() { return false; }
+
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
@@ -476,15 +489,14 @@ private:
 	bool m_bset;
 };
 
-class xsdRestriction: public xsdType
+class xsdSimpleRestriction: public xsdType
 {
 public:
-	xsdRestriction(xsdType * parent) : xsdType("",type_restriction,parent)
+	xsdSimpleRestriction(const char * base,xsdType * parent) : xsdType("",type_simpleRestriction,parent)
 	{
-		m_maxLength.set(1) ;
-		m_base = NULL;
+		m_base   = NULL;
 		m_simple = NULL;
-		m_enum = NULL;
+		m_enum   = NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
@@ -494,6 +506,7 @@ public:
 	void setCppName(const char * name);
 	bool isInteger() { return m_base->isInteger();}
 	bool isfloat()   { return m_base->isfloat();}
+	bool isStruct();
 	bool isString();
 	bool isScalar();
 	const char * getReturnType();
@@ -513,21 +526,26 @@ public:
 	xsdRestictionValue	m_whiteSpace;
 };
 
-class xsdExtension : public xsdType
+class xsdSimpleExtension : public xsdType
 {
 public:
-	xsdExtension(xsdType * base,xsdType * parent) : xsdType("",type_extension,parent)
+	xsdSimpleExtension(const char * base,xsdType * parent) : xsdType("",type_simpleExtension,parent)
 	{
-		m_base = base;
+		m_basetypename = new xsdTypename(base);
+		m_exttype = NULL;
+		m_base = NULL;
 	}
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 //	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
-	bool hasAttributes() { return !m_attributes.empty();}
+	void GenWrite(CppFile & out,Symtab & st);
+	void GetAttributes(xsdAttrList & list);
 
-	xsdType     * m_base ;
+	xsdTypename * m_basetypename ;
+	xsdType     * m_base;
+	xsdType     * m_exttype;
 	xsdAttrList   m_attributes;
 };
 
@@ -541,8 +559,11 @@ public:
 	void CalcDependency(xsdTypeList & list);
 	bool CheckCycle(xsdElement * elem);
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GetAttributes(xsdAttrList & list);
+	void GenAttrHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenWrite(CppFile & out,Symtab & st);
 
 	xsdType * m_content; // xsd_Restriction oder xsd_Extension
 };
@@ -578,7 +599,7 @@ public:
 	int  getDim();
 	void setCppName(const char * name);
 
-	xsdRestriction * m_rest;
+	xsdSimpleRestriction * m_rest;
 	xsdList        * m_list;
 	xsdUnion       * m_union;
 };
@@ -735,13 +756,6 @@ public:
 		return !m_default.empty();
 	}
 
-	bool hasAttributes();
-
-	const char * getDefault()
-	{
-		return m_default.c_str();
-	}
-
 	const char * getChoiceName()
 	{
 		return "m_choice";
@@ -769,7 +783,6 @@ public:
 	}
 
 	void CalcDependency(xsdTypeList & list);
-
 	void GenHeader(CppFile & out,int indent);
 	void GenRootHeader(CppFile & out,int indent);
 	void GenRootImpl(CppFile & out,Symtab & st);
@@ -781,6 +794,7 @@ public:
 	void GenDelete(CppFile & out,int indent);
 	bool isPtr() { return m_isChoice || m_isCyclic;}
 	bool isChoice() { return m_isChoice;}
+	bool hasAttributes();
 	std::string m_choice_selector;
 	xsdTypename * m_typename;
 	xsdNamespace* m_tns ;
@@ -824,16 +838,43 @@ public:
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	void GenAttrHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
-	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src);
 	void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	bool CheckCycle(xsdElement * elem);
-	bool hasAttributes() { return m_attributes.empty() == false;}
-
+	void GetAttributes(xsdAttrList & list);
 	xsdType *   m_type;
 	xsdElement* m_rootelem;
 	xsdAttrList m_attributes;
+};
+
+class xsdComplexRestriction : public xsdSimpleRestriction
+{
+public:
+	xsdComplexRestriction(const char * basetype,xsdType * parent) :
+		xsdSimpleRestriction(basetype,parent)
+	{
+		m_tag = type_complexRestriction ;
+		m_type = NULL;
+	}
+	xsdType * m_type ;
+};
+
+class xsdComplexExtension : public xsdSimpleExtension
+{
+public:
+	xsdComplexExtension(const char * basetype,xsdType * parent) :
+		xsdSimpleExtension(basetype,parent)
+	{
+		m_tag = type_complexExtension;
+		m_type = NULL;
+	}
+	void CalcDependency(xsdTypeList & list);
+	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenAttrHeader(CppFile & out,int indent);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	xsdType * m_type ;
 };
 
 class xsdComplexContent : public xsdType
@@ -846,8 +887,10 @@ public:
 	}
 	void CalcDependency(xsdTypeList & list);
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
+	void GenAttrHeader(CppFile & out,int indent);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	void GetAttributes(xsdAttrList & list) { return m_type->GetAttributes(list);}
 	xsdType * m_type; // extension | restriction
 };
 
