@@ -2096,6 +2096,25 @@ void xsdTypeList::GenLocal(CppFile& out, Symtab& st, const char* defaultstr)
 {
 }
 
+
+void xsdType::GenAttrHeader(CppFile & out,int indent)
+{
+	if (!m_attributes.empty())
+	{
+		m_attributes.GenHeader(out,indent,"");
+	}
+}
+
+void xsdType::GenAttrImpl(CppFile & out,Symtab & st)
+{
+	m_attributes.GenLocal(out,st);
+}
+
+void xsdType::GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
+{
+	m_attributes.GenWrite(out,indent,elem);
+}
+
 void xsdAttrList::GenHeader(CppFile& out, int indent, const char* defaultstr)
 {
 	for (attrIterator ai = begin() ; ai != end() ; ai++)
