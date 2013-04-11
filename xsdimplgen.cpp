@@ -214,7 +214,6 @@ void xsdSimpleExtension::GenHeader(CppFile &out,int indent,const char * defaults
 			out.iprintln(indent,"void Parse(xmlNodePtr node);");
 			out.iprintln(indent,"void Write(xmlStream & out);");
 			GenAttrHeader(out,indent);
-		//	out.iprintln(indent,"%s %s;\n",m_basetypename->getCppName(),"m_val");
 			out.iprintln(--indent,"};");
 		}
 	}
@@ -226,7 +225,6 @@ void xsdSimpleExtension::GenImpl(CppFile & out,Symtab & st,const char * defaults
 		return ;
 	if (m_base->isStruct())
 		out.iprintln(1,"%s::Parse(node);",m_base->getCppName());
-	GenParserAttrLoop(out,st,m_attributes,defaultstr);
 	if (m_exttype != NULL)
 		m_exttype->GenImpl(out,st,defaultstr);
 	if (m_base != NULL && (m_base->isScalar() || m_base->isString()))
@@ -563,7 +561,7 @@ bool xsdElementList::hasPointer()
 
 void xsdAttribute::GenHeader(CppFile & out,int indent)
 {
-	if (m_type->isLocal())
+	if (m_type != NULL && m_type->isLocal())
 	{
 		m_type->GenHeader(out,indent,getDefault());
 	}
@@ -679,7 +677,7 @@ void xsdSimpleContent::GenImpl(CppFile & out,Symtab & st,const char * defaultstr
 
 void xsdSimpleContent::GenAttrImpl(CppFile & out,Symtab & st)
 {
-	if (tascpp() || m_content == NULL)
+	if (m_content == NULL)
 		return ;
 	m_content->GenAttrImpl(out,st);
 }
@@ -1115,6 +1113,12 @@ void xsdType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 
 }
 
+void xsdType::GenWrite(CppFile & out,Symtab & st)
+{
+	const char * name = getCppName();
+	out.iprintln(1,"if (%s::isset()) %s::Write(out);\n",name,name);
+}
+
 void xsdType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & dest,const char * src)
 {
 	out.iprintln(indent,"%s.sets(%s);",dest.getlvalue(),src);
@@ -1131,7 +1135,7 @@ void xsdComplexType::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
 		m_type->GenLocal(out,st,defaultstr);
 }
 
-void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes,const char * defaultstr)
+void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes)
 {
 	if (!attributes.empty())
 	{
@@ -1223,7 +1227,10 @@ void xsdComplexType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	GenAttrImpl(out,st);
 	out.iprintln(i,"void %s::Parse(xmlNodePtr node)",getQualifiedName().c_str());
 	out.iprintln(i,"{");
-	GenParserAttrLoop(out,st,m_attributes,defaultstr);
+	if (hasAttributes())
+	{
+		GenParserAttrLoop(out,st,GetAttributes());
+	}
 	if (m_type != NULL)
 	{
 		m_type->GenImpl(out,st,defaultstr);
@@ -1238,11 +1245,6 @@ void xsdComplexType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	out.iprintln(i++,"{");
 	if (m_type != NULL)
 		m_type->GenWrite(out,st);
-	else
-	{
-		out.iprintln(i,"if (isset())");
-		out.iprintln(i+1,"out.putrawstring(\"<%s/>\");",getName());
-	}
 	out.iprintln(--i,"}");
 }
 

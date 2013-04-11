@@ -378,7 +378,7 @@ public:
 
 	virtual void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	virtual void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
-	virtual void GenWrite(CppFile & out,Symtab & st) {}
+	virtual void GenWrite(CppFile & out,Symtab & st);
 	virtual void GenAttrImpl(CppFile & out,Symtab & st);
 	virtual void GenWriteAttr(CppFile & out,int indent,xsdElement * elem);
 	virtual void GenAttrHeader(CppFile & out,int indent);
@@ -387,6 +387,7 @@ public:
 	virtual void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	virtual bool CheckCycle(xsdElement * elem) { return false;}
 	virtual bool hasAttributes() { return !m_attributes.empty(); }
+	virtual xsdAttrList & GetAttributes() { return m_attributes;}
 
 	std::string m_ns;
 	std::string m_name ;
@@ -512,6 +513,12 @@ public:
 		return xsdType::hasAttributes() ||
 				   (m_base != NULL && m_base->hasAttributes());
 	}
+
+	xsdAttrList & GetAttributes()
+	{
+		return m_attributes;
+	}
+
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
 		xsdType::GenWriteAttr(out,indent,elem);
@@ -562,6 +569,14 @@ public:
 		      (m_base != NULL && m_base->hasAttributes()) ||
 			    (m_exttype != NULL && m_exttype->hasAttributes());
 	}
+
+	xsdAttrList & GetAttributes()
+	{
+		if (m_base != NULL && m_base->hasAttributes())
+			return m_base->GetAttributes();
+		return m_attributes;
+	}
+
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
 		xsdType::GenWriteAttr(out,indent,elem);
@@ -591,6 +606,14 @@ public:
 		return xsdType::hasAttributes() ||
 				   (m_content != NULL && m_content->hasAttributes());
   }
+
+	xsdAttrList & GetAttributes()
+	{
+		if (m_content != NULL && m_content->hasAttributes())
+			return m_content->GetAttributes();
+		return m_attributes;
+	}
+
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
 		if (m_content != NULL)
@@ -885,6 +908,12 @@ public:
 		return xsdType::hasAttributes() ||
 				   (m_type != NULL && m_type->hasAttributes());
 	}
+	xsdAttrList & GetAttributes()
+	{
+		if (m_type != NULL && m_type->hasAttributes())
+			return m_type->GetAttributes();
+		return m_attributes;
+	}
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
 		if (m_type != NULL)
@@ -905,6 +934,11 @@ public:
 		m_tag = type_complexRestriction ;
 		m_type = NULL;
 	}
+	void GenWrite(CppFile & out,Symtab & st)
+	{
+		if (m_type != NULL)
+			m_type->GenWrite(out,st);
+	}
 	xsdType * m_type ;
 };
 
@@ -921,6 +955,12 @@ public:
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
+	void GenWrite(CppFile & out,Symtab & st)
+	{
+		if (m_type != NULL)
+			m_type->GenWrite(out,st);
+	}
+
 	xsdType * m_type ;
 };
 
@@ -947,6 +987,13 @@ public:
 			m_type->GenWriteAttr(out,indent,elem);
 		xsdType::GenWriteAttr(out,indent,elem);
 	}
+
+	void GenWrite(CppFile & out,Symtab & st)
+	{
+		if (m_type != NULL)
+			m_type->GenWrite(out,st);
+	}
+
 	xsdType * m_type; // extension | restriction
 };
 
@@ -966,7 +1013,7 @@ void GenParserChildLoopStart(CppFile & out,xsdElementList & elements);
 void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool ischoice);
 void GenWriteElementCases(CppFile & out,Symtab & st,xsdElementList & elements);
 void GenWriteElements(CppFile & out,xsdElementList & elements);
-void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes,const char * defaultstr);
+void GenParserAttrLoop(CppFile & out,Symtab & st,xsdAttrList & attributes);
 void GenParserChildLoopEnd(CppFile & out);
 
 

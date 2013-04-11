@@ -224,7 +224,7 @@ xsdNamespace *targetNamespace;
 std::string MakeIdentifier(const char * prefix,const char * name)
 {
 	std::string str ;
-	if (prefix != NULL)
+	if (prefix != NULL && prefix[0])
 		str += prefix ;
 	while(*name)
 	{
