@@ -5,9 +5,11 @@
 #include <list>
 #include <string.h>
 #include <string>
+#include <assert.h>
 
 class xsdElement;
 class xsdType ;
+class xsdTypename;
 class xsdChoice;
 class xsdGroup;
 class xsdSequence;
@@ -24,6 +26,8 @@ class xsdNamespace;
 extern xsdNamespace * targetNamespace;
 typedef std::list<xsdType*>::iterator typeIterator;
 
+xsdType * FindType(const char * name);
+xsdType * FindType(xsdTypename * tn);
 std::string MakeIdentifier(const char * prefix,const char * name);
 
 class xsdTypename // für Vorwärtsdeklarationen
@@ -191,7 +195,7 @@ typedef xsdElementList::iterator elementIterator ;
 class xsdAttrElemBase
 {
 public:
-	xsdAttrElemBase(const char * name,const char * defval,xsdType * type,const char * prefix)
+	xsdAttrElemBase(const char * name,const char * defval,const char * typname,const char * prefix)
 	{
 		if (strchr(name,':') != NULL)
 		{
@@ -201,7 +205,13 @@ public:
 		}
 		m_name    = name ;
 		m_cname   = MakeIdentifier(prefix,name);
-		m_type    = type;
+		m_type    = NULL;
+		m_typename= NULL;
+		if (typname != NULL)
+		{
+			m_typename = new xsdTypename(typname);
+			m_type     = FindType(typname);
+		}
 		if (defval != NULL)
 			m_default    = defval;
 	}
@@ -209,6 +219,7 @@ public:
 	std::string m_name ;
 	std::string m_cname;
 	std::string m_default;
+	xsdTypename * m_typename;
 	xsdType *   m_type ;
 
 	const char * getName() { return m_name.c_str();}
@@ -218,7 +229,8 @@ public:
 	virtual void CalcDependency(xsdTypeList & list) {}
 	virtual void GenHeader(CppFile & out,int indent){}
 	virtual const char * getlvalue() { return getCppName();}
-	virtual const char * getChoiceName() { return "";}
+	virtual const char * getChoiceVarname() { return "";}
+	virtual const char * getChoiceTypename() { return "";}
 	const char * getDefault() { return m_default.c_str();	}
 
 };
@@ -240,8 +252,8 @@ public:
 		eUse_Required,
 	};
 
-	xsdAttribute(const char * name,const char * defval,const char * fixed,eUse use,xsdType * type) :
-		xsdAttrElemBase(name,defval,type,"a_")
+	xsdAttribute(const char * name,const char * typname,const char * defval,const char * fixed,eUse use) :
+		xsdAttrElemBase(name,defval,typname,"a_")
 	{
 		m_use     = use;
 		m_fixed   = fixed;
@@ -729,11 +741,16 @@ typedef xsdSequenceList::iterator sequenceIterator ;
 class xsdChoice : public xsdType
 {
 public:
-	xsdChoice(int min,int max,xsdType * parent) : xsdType("",type_choice,parent)
+	xsdChoice(int seq,int min,int max,xsdType * parent) : xsdType("",type_choice,parent)
 	{
+		char tmp[16];
 		m_minOccurs = min ;
 		m_maxOccurs = max ;
-		m_seq       = 0;
+		m_seq       = seq;
+		sprintf(tmp,"xs_choice_%d",seq);
+		m_typename = tmp ;
+		sprintf(tmp,"m_choice_%d",seq);
+		m_varname = tmp ;
 	}
 
 	void CalcDependency(xsdTypeList & list);
@@ -743,7 +760,15 @@ public:
 	void GenWrite(CppFile & out,Symtab & st);
 	void GenLocal(CppFile & out,Symtab & st,const char * defaultstr);
 	bool CheckCycle(xsdElement * elem);
+	const char * getVarname()
+	{
+		return m_varname.c_str();
+	}
 
+	const char * getTypename()
+	{
+		return m_typename.c_str();
+	}
 
 	int            m_minOccurs;
 	int            m_maxOccurs;
@@ -751,6 +776,8 @@ public:
 	xsdElementList m_elements;
 	xsdGroupList   m_groups;
 	xsdSequenceList m_sequences;
+	std::string     m_varname;
+	std::string     m_typename;
 };
 
 
@@ -774,14 +801,15 @@ public:
 class xsdElement : public xsdAttrElemBase
 {
 public:
-	xsdElement(const char * name,xsdTypename * typname,xsdType * type,int minOccurs,int maxOccurs,bool isChoice,const char * xsddefault) :
-	  xsdAttrElemBase(name,xsddefault,type,"m_")
+	xsdElement(const char * name,const char * typname,int minOccurs,int maxOccurs,xsdChoice * choice,const char * xsddefault) :
+	  xsdAttrElemBase(name,xsddefault,typname,"m_")
 	{
-		m_isChoice   = isChoice;
+		m_choice     = choice;
 		m_isCyclic   = false;
-		if (m_isChoice)
+		if (m_choice)
+		{
 			m_choice_selector = MakeIdentifier("e_",name);
-		m_typename   = typname;
+		}
 		m_minOccurs  = minOccurs;
 		m_maxOccurs  = maxOccurs;
 		m_tns        = targetNamespace;
@@ -817,9 +845,16 @@ public:
 		return !m_default.empty();
 	}
 
-	const char * getChoiceName()
+	const char * getChoiceTypename()
 	{
-		return "m_choice";
+		assert(m_choice != NULL);
+		return m_choice->getTypename();
+	}
+
+	const char * getChoiceVarname()
+	{
+		assert(m_choice != NULL);
+		return m_choice->getVarname();
 	}
 
 	const char * getlvalue()
@@ -830,7 +865,7 @@ public:
 			lval = "(*";
 			if (isChoice())
 			{
-				lval += getChoiceName();
+				lval += getChoiceVarname();
 				lval += ".";
 			}
 			lval += getCppName();
@@ -853,14 +888,13 @@ public:
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
 	void GenDelete(CppFile & out,int indent);
-	bool isPtr() { return m_isChoice || m_isCyclic;}
-	bool isChoice() { return m_isChoice;}
+	bool isPtr() { return m_choice != NULL || m_isCyclic;}
+	bool isChoice() { return m_choice != NULL;}
 	bool hasAttributes();
 	std::string m_choice_selector;
-	xsdTypename * m_typename;
 	xsdNamespace* m_tns ;
 	xsdTypeList m_deplist;
-	bool        m_isChoice;
+	xsdChoice  *m_choice;
 	bool        m_isCyclic;
 	unsigned		m_minOccurs;
 	unsigned   	m_maxOccurs;
@@ -1006,8 +1040,6 @@ public:
 	}
 };
 
-xsdType * FindType(const char * name);
-xsdType * FindType(xsdTypename * tn);
 
 void GenParserChildLoopStart(CppFile & out,xsdElementList & elements);
 void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool ischoice);

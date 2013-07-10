@@ -66,7 +66,7 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 		xsdType * type = * ti ;
 		if (type->m_tag == type_choice)
 		{
-			out.iprintln(indent,"if (m_choice.isset())");
+			out.iprintln(indent,"if (%s.isset())",((xsdChoice*)type)->getVarname());
 			out.iprintln(indent+1,"return true;") ;
 		}
 	}
