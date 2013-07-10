@@ -38,21 +38,20 @@ void GenElementCases(CppFile & out,Symtab & st,xsdElementList & elements,bool is
 			out.iprintln(id,"case sy_%s:",s->m_cname.c_str());
 			if (ischoice)
 			{
-				const char * choicename = elem->getChoiceName();
 				out.iprintln(id++,"{");
-				out.iprintln(id,"%s.m_selected = xs_choice::%s;",choicename,elem->m_choice_selector.c_str());;
+				out.iprintln(id,"%s.m_selected = %s::%s;",elem->getChoiceVarname(),elem->getChoiceTypename(),elem->m_choice_selector.c_str());;
 				if (elem->isArray())
 				{
 					out.iprintln(id,"%s tmp;",elem->m_type->getCppName());
 					elem->m_type->GenAssignment(out,id,"tmp","getContent(child)");
 					if (elem->isPtr())
 					{
-						out.iprintln(id,"if (%s.%s == NULL)",choicename,elem->getName());
-						out.iprintln(id+1,"%s.%s = new xs_array<%s>;",choicename,elem->getCppName(),elem->m_type->getCppName());
-						out.iprintln(id,"%s.%s->add(tmp);",choicename,elem->getChoiceName());
+						out.iprintln(id,"if (%s.%s == NULL)",elem->getChoiceVarname(),elem->getName());
+						out.iprintln(id+1,"%s.%s = new xs_array<%s>;",elem->getChoiceVarname(),elem->getCppName(),elem->m_type->getCppName());
+						out.iprintln(id,"%s.%s->add(tmp);",elem->getChoiceVarname(),elem->getCppName());
 					}
 					else
-						out.iprintln(id,"%s.%s.add(tmp);",choicename,elem->getCppName());
+						out.iprintln(id,"%s.%s.add(tmp);",elem->getChoiceVarname(),elem->getCppName());
 				}
 				else
 				{
@@ -98,8 +97,8 @@ void GenWriteElementCases(CppFile & out,Symtab & st,xsdElementList & elements)
 		if (s != NULL)
 		{
 			const char * name = elem->getName();
-			out.iprintln(indent++,"case xs_choice::%s:",elem->m_choice_selector.c_str());
-			out.iprintln(indent,  "if ((*m_choice.%s).isset())",elem->getCppName());
+			out.iprintln(indent++,"case %s::%s:",elem->getChoiceTypename(),elem->m_choice_selector.c_str());
+			out.iprintln(indent,  "if ((*%s.%s).isset())",elem->getChoiceVarname(),elem->getCppName());
 			out.iprintln(indent++,"{");
 			if (elem->hasAttributes())
 			{
@@ -109,7 +108,7 @@ void GenWriteElementCases(CppFile & out,Symtab & st,xsdElementList & elements)
 			}
 			else
 				out.iprintln(indent,"out.putrawstring(\"<%s>\");",name);
-			out.iprintln(4,   "(*m_choice.%s).Write(out);",elem->getCppName());
+			out.iprintln(4,   "(*%s.%s).Write(out);",elem->getChoiceVarname(),elem->getCppName());
 			out.iprintln(4,  "out.putrawstring(\"</%s>\");",name);
 			out.iprintln(3,  "}");
 			out.iprintln(2,"break;");
@@ -129,6 +128,10 @@ void GenWriteElem(CppFile & out,int indent,xsdElement * elem)
 {
 	const char * name = elem->getName();
 	std::string var = elem->getCppName();
+	if (elem->m_type == NULL)
+	{
+		return ;
+	}
 	if (elem->isArray())
 		var += "[i]";
 	out.iprintln(indent,   "if (%s.isset())",var.c_str());
@@ -247,18 +250,31 @@ void xsdSimpleContent::GenHeader(CppFile &out,int indent,const char * defaultstr
 
 void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 {
+	/*
+	 * choice parent	    					: group,  choice, sequence, complexType, restriction (simpleContent) , extension(simpleContent),  restriction (complexContent), extension(complexContent)
+	 * group parent       					: schema, choice, sequence, complexType, restriction (complexContent), extension (complexContent)
+	 * sequence parent    					: group,  choice, sequence, complexType, restriction (simpleContent),  extension (simpleContent), restriction (complexContent), extension (complexContent)
+	 * complexType parent 					: element, redefine, schema
+	 * restriction (simpleContent) 	: simpleContent
+	 * extension(simpleContent)     : simpleContent
+	 * restriction (complexContent) : complexContent
+	 * extension (complexContent)   : complexContent
+	 * simpleContent                : complexType
+	 * complexContent								: complexType
+	 */
 	if (!tashdr())
 	{
-		if (m_parent->m_tag == type_complex)
+		bool openstruct = false ;
+		if (m_parent->m_tag == type_complex || m_parent->m_tag == type_complexExtension)
 		{
+			openstruct = true;
 			out.iprintln(indent,  "struct %s",getCppName());
 			out.iprintln(indent++,"{");
 			m_parent->GenAttrHeader(out,indent);
 			out.iprintln(indent,"void Parse(xmlNodePtr node);");
 			out.iprintln(indent,"void Write(xmlStream & out);");
 		}
-		const char * choicename = "xs_choice";
-		out.iprintln(indent,   "struct %s",choicename);
+		out.iprintln(indent,   "struct %s",getTypename());
 		out.iprintln(indent++,"{");
 		out.iprintln(indent,"void Write(xmlStream & out);");
 		/*
@@ -277,7 +293,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
 		{
 			xsdElement * elem = * ei ;
-			out.iprintln(indent,"void set(%s * elem)",elem->m_type->getCppName());
+			out.iprintln(indent,"void set_%s(%s * elem)",elem->getCppName(),elem->m_type->getCppName());
 			out.iprintln(indent++,"{");
 			out.iprintln(indent,    "m_selected = %s;",elem->m_choice_selector.c_str());
 			out.iprintln(indent,    "%s = elem;",elem->getCppName());
@@ -288,7 +304,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		/*
 		 * generate constructor to initialize the choices to NULL
 		 */
-		out.iprintln(indent,"%s()",choicename);
+		out.iprintln(indent,"%s()",getTypename());
 		out.iprintln(indent++,"{");
 		out.iprintln(indent,"m_selected = e_none_selected;");
 		for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
@@ -301,7 +317,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		/*
 		 * generate the destructor to delete the selected choice
 		 */
-		out.iprintln(indent,"~%s()",choicename);
+		out.iprintln(indent,"~%s()",getTypename());
 		out.iprintln(indent++,"{");
 		out.iprintln(indent,  "switch(m_selected)");
 		out.iprintln(indent++,"{");
@@ -316,11 +332,11 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 
 		out.iprintln(--indent,"}");
 
-		out.iprintln(--indent,"} m_choice;");
-	}
-	if (m_parent->m_tag == type_complex)
-	{
-		out.iprintln(--indent,"};");
+		out.iprintln(--indent,"} %s;",getVarname());
+		if (openstruct)
+		{
+			out.iprintln(--indent,"};");
+		}
 	}
 }
 
@@ -348,7 +364,7 @@ void xsdChoice::GenLocal(CppFile & out,Symtab & st,const char * defaultstr)
 void xsdChoice::GenWrite(CppFile & out,Symtab & st)
 {
 	int indent = 1 ;
-	out.iprintln(indent,"switch(m_choice.m_selected)");
+	out.iprintln(indent,"switch(%s.m_selected)",getVarname());
 	out.iprintln(indent++,"{");
 	GenWriteElementCases(out,st,m_elements);
 	out.iprintln(--indent,"}");
@@ -1260,7 +1276,7 @@ void xsdComplexType::GenAssignment(CppFile & out,int indent,xsdAttrElemBase & de
 	if (dest.isPtr())
 	{
 		if (dest.isChoice())
-			out.iprintln(indent,"%s.%s = new %s;",dest.getChoiceName(),dest.getCppName(),dest.m_type->getCppName());
+			out.iprintln(indent,"%s.%s = new %s;",dest.getChoiceVarname(),dest.getCppName(),dest.m_type->getCppName());
 		else
 			out.iprintln(indent,"%s = new %s;",dest.getCppName(),dest.m_type->getCppName());
 	}
@@ -1283,10 +1299,10 @@ void xsdComplexExtension::CalcDependency(xsdTypeList & list)
 	if (m_base == NULL)
 	{
 		m_base = FindType(m_basetypename);
-		if (m_base != NULL && !m_base->tascd())
-		{
-			list.push_back(m_base);
-		}
+	}
+	if (m_base != NULL && !m_base->tascd())
+	{
+		list.push_back(m_base);
 	}
 	if (m_type != NULL)
 		m_type->CalcDependency(list);
@@ -1296,6 +1312,23 @@ void xsdComplexExtension::GenHeader(CppFile & out,int indent,const char * defaul
 {
 	if (m_type != NULL)
 		m_type->GenHeader(out,indent,defaultstr);
+	else
+	{
+		xsdType * p = m_parent;
+		if (p != NULL && p->m_parent != NULL)
+		{
+			p = p->m_parent;
+			if (p->m_tag == type_complex)
+			{
+				if (m_base != NULL)
+					out.iprintln(indent,"struct %s : public %s",p->getCppName(),m_base->getCppName());
+				else
+					out.iprintln(indent,"struct %s",getCppName());
+				out.iprintln(indent,"{");
+				out.iprintln(indent,"};");
+			}
+		}
+	}
 }
 
 void xsdComplexExtension::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
