@@ -1443,6 +1443,7 @@ xsdSchema * ParseSchema(xmlNodePtr schema,Symtab & st)
 					ns->AddType(new xsdType("unsignedPositiveInteger",type_positiveInteger,NULL,true));
 					ns->AddType(new xsdType("dateTime",type_dateTime,NULL,true));
 					ns->AddType(new xsdType("anyURI",type_string,NULL,true));
+					ns->AddType(new xsdType("language",type_string,NULL,true));
 				}
 			}
 			else
@@ -1535,6 +1536,7 @@ const char * xsdType::getCppName()
 		case	type_long:    			     name = "xs_long";								break ;
 		case	type_boolean:				     name = "xs_boolean";								break ;
 		case  type_string:             name = "xs_string";							break ;
+		case  type_language:           name = "xs_string";							break ;
 		case	type_integer:            name = "xs_integer"	;						break ;
 		case	type_dateTime:           name = "xs_dateTime";            break ;
 		case  type_all:
@@ -1582,7 +1584,6 @@ const char * xsdType::getNativeName()
 		case	type_long:    			     name = "long";								break ;
 		case	type_boolean:				     name = "bool";								break ;
 		case	type_integer:            name = "int"	;						break ;
-
 		default:
 			name =getCppName();
 		break ;
@@ -1632,6 +1633,12 @@ bool  xsdType::isSignedInteger()
 	return res ;
 }
 
+bool  xsdType::isSigned()
+{
+	bool res = isSignedInteger() || isfloat();
+	return res ;
+}
+
 bool	xsdType::isInteger()
 {
 	return isUnsignedInteger() || isSignedInteger() ;
@@ -1661,6 +1668,15 @@ bool  xsdType::isScalar()
 
 bool  xsdType::isString()
 {
+	if (m_tag == type_simple)
+	{
+		xsdSimpleType * simple = (xsdSimpleType*)this;
+		if (simple->m_rest != NULL)
+		{
+			if (simple->m_rest->m_enum == NULL)
+				return simple->m_rest->isString();
+		}
+	}
 	return m_tag == type_string;
 }
 
@@ -1927,7 +1943,6 @@ void xsdElement::CalcDependency(xsdTypeList & list)
 	}
 	if (m_type != NULL)
 	{
-		int stop = 0 ;
 		if (m_type->isLocal() && !m_type->m_indeplist)
 		{
 			m_type->CalcDependency(m_deplist);
