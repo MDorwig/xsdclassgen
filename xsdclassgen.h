@@ -324,6 +324,7 @@ public:
 	virtual bool  isString();
 	virtual bool  isScalar();
 	virtual bool  isStruct();
+	virtual bool  isSigned();
 
 	//virtual int   getDim() { return 1 ;}
 

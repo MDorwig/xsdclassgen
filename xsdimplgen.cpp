@@ -126,15 +126,33 @@ void xsdElement::GenWriteAttr(CppFile & out,int indent)
 
 void GenWriteElem(CppFile & out,int indent,xsdElement * elem)
 {
+	xsdType * type = elem->m_type;
 	const char * name = elem->getName();
 	std::string var = elem->getCppName();
+	std::string cvar = var ;
 	if (elem->m_type == NULL)
 	{
 		return ;
 	}
 	if (elem->isArray())
+	{
 		var += "[i]";
-	out.iprintln(indent,   "if (%s.isset())",var.c_str());
+		cvar = var ;
+	}
+	else
+	{
+		if (type->m_tag == type_complex)
+		{
+			xsdComplexType * ctype = (xsdComplexType*)type ;
+			if (ctype->m_type != NULL && ctype->m_type->m_tag == type_choice)
+			{
+				xsdChoice * choice = (xsdChoice*)ctype->m_type;
+				cvar += "." ;
+				cvar += choice->getVarname();
+			}
+		}
+	}
+	out.iprintln(indent,   "if (%s.isset())",cvar.c_str());
 	out.iprintln(indent++,"{");
 	if (elem->m_type->isString())
 	{
@@ -818,6 +836,55 @@ void xsdSimpleRestriction::GenAssignment(CppFile & out,int indent,xsdAttrElemBas
 	out.iprintln(indent,"%s.sets(%s);",dest.getlvalue(),src);
 }
 
+enum cmp
+{
+	cmp_lt, // <
+	cmp_le,	// <=
+	cmp_eq, // ==
+	cmp_ne, // !=
+	cmp_gt, // >
+	cmp_ge  // >=
+};
+
+const char * cmpop(enum cmp op)
+{
+	switch(op)
+	{
+		case	cmp_lt : return "<"  ;
+		case	cmp_le : return "<=" ;
+		case	cmp_eq : return "==" ;
+		case	cmp_ne : return "!=" ;
+		case	cmp_gt : return ">" ;
+		case	cmp_ge : return ">=" ;
+	}
+	return "--";
+}
+
+void GenCheckMinMax(CppFile & out,int indent,enum cmp opmin,enum cmp opmax,bool sign,int minval,int maxval)
+{
+	if ((sign || minval > 0) && !(opmin == cmp_lt && minval <= 0))
+	{
+		out.iprintln(indent,"if (val %s %d || val %s %d) throw new xs_invalidInteger(val);",cmpop(opmin),minval,cmpop(opmax),maxval);
+	}
+	else
+	{
+		out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(opmax),maxval);
+	}
+}
+
+void GenCheckMin(CppFile & out,int indent,enum cmp  opmin,bool sign,int minval)
+{
+	if ((sign || minval > 0) && !(opmin == cmp_lt && minval <= 0))
+	{
+		out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(opmin),minval);
+	}
+}
+
+void GenCheckMax(CppFile & out,int indent,enum cmp  opmax,bool sign,int maxval)
+{
+	out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(opmax),maxval);
+}
+
 void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
 {
 	const char * tname = getCppName();
@@ -863,6 +930,10 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 					out.iprintln(indent++,"{");
 					out.iprintln(indent,"sets(\"%s\");",defaultstr);
 					out.iprintln(--indent,"}");
+				}
+				if (isString())
+				{
+					out.iprintln(indent,"bool empty() { return m_value.empty();}");
 				}
 			}
 			/*
@@ -918,26 +989,29 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 			out.iprintln(--indent,"}");
 			if (m_base->isScalar())
 			{
+				bool sign = m_base->isSigned() ;
 				out.iprintln(indent,   "void set(%s val)",m_base->getNativeName());
 				out.iprintln(indent++,"{");
 				if      (m_minExclusive.isset() && m_maxExclusive.isset())
-					out.iprintln(indent,"if(val <= %d || val >= %d) throw new xs_invalidInteger(val);",m_minExclusive.get(),m_maxExclusive.get());
+				{
+					GenCheckMinMax(out,indent,cmp_le,cmp_ge,sign,m_minExclusive.get(),m_maxExclusive.get());
+				}
 				else if (m_minExclusive.isset() && m_maxInclusive.isset())
-					out.iprintln(indent,"if(val <= %d || val > %d) throw new xs_invalidInteger(val);",m_minExclusive.get(),m_maxInclusive.get());
+					GenCheckMinMax(out,indent,cmp_le,cmp_gt,sign,m_minExclusive.get(),m_maxInclusive.get());
 				else if (m_minInclusive.isset() && m_maxExclusive.isset())
-					out.iprintln(indent,"if(val < %d || val >= %d) throw new xs_invalidInteger(val);",m_minInclusive.get(),m_maxExclusive.get());
+					GenCheckMinMax(out,indent,cmp_lt,cmp_ge,sign,m_minInclusive.get(),m_maxExclusive.get());
 				else if (m_minInclusive.isset() && m_maxInclusive.isset())
-					out.iprintln(indent,"if(val < %d || val >  %d) throw new xs_invalidInteger(val);",m_minInclusive.get(),m_maxInclusive.get());
+					GenCheckMinMax(out,indent,cmp_lt,cmp_gt,sign,m_minInclusive.get(),m_maxInclusive.get());
 				else
 				{
 					if (m_minExclusive.isset())
-						out.iprintln(indent,"if(val <= %d) throw new xs_invalidInteger(val);",m_minExclusive.get());
+						GenCheckMin(out,indent,cmp_le,sign,m_minExclusive.get());
 					else if (m_maxExclusive.isset())
-						out.iprintln(indent,"if(val >= %d) throw new xs_invalidInteger(val);",m_maxExclusive.get());
+						GenCheckMax(out,indent,cmp_ge,sign,m_maxExclusive.get());
 					else if (m_minInclusive.isset())
-						out.iprintln(indent,"if(val < %d) throw new xs_invalidInteger(val);",m_minInclusive.get());
+						GenCheckMin(out,indent,cmp_lt,sign,m_minInclusive.get());
 					else if (m_maxInclusive.isset())
-						out.iprintln(indent,"if(val > %d) throw new xs_invalidInteger(val);",m_maxInclusive.get());
+						GenCheckMax(out,indent,cmp_gt,sign,m_maxInclusive.get());
 				}
 				out.iprintln(indent,    "m_value.set(val);");
 				out.iprintln(--indent,"}");
@@ -1245,7 +1319,8 @@ void xsdComplexType::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 	out.iprintln(i,"{");
 	if (hasAttributes())
 	{
-		GenParserAttrLoop(out,st,GetAttributes());
+		xsdAttrList & alst = GetAttributes();
+		GenParserAttrLoop(out,st,alst);
 	}
 	if (m_type != NULL)
 	{
