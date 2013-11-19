@@ -234,6 +234,18 @@ void xsdSimpleExtension::GenHeader(CppFile &out,int indent,const char * defaults
 			out.iprintln(indent++,"{");
 			out.iprintln(indent,"void Parse(xmlNodePtr node);");
 			out.iprintln(indent,"void Write(xmlStream & out);");
+			if (!m_attributes.empty())
+			{
+				out.iprintln(indent,"bool isset() const");
+				out.iprintln(indent++,"{");
+				out.iprintf(indent,"return %s::isset()",m_base->getCppName());
+				for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
+				{
+						out.printf(" || %s.isset()",(*ai)->getCppName());
+				}
+				out.println(";");
+				out.iprintln(--indent,"}");
+			}
 			GenAttrHeader(out,indent);
 			out.iprintln(--indent,"};");
 		}
@@ -398,6 +410,9 @@ void xsdComplexType::GenHeader(CppFile & out,int indent,const char * defaultstr)
 		}
 		else
 		{
+			/*
+			 * this type does not have any members
+			 */
 			out.iprintln(indent,"struct %s",getCppName());
 			out.iprintln(indent++,"{");
 			m_attributes.GenHeader(out,indent,defaultstr);
@@ -408,7 +423,29 @@ void xsdComplexType::GenHeader(CppFile & out,int indent,const char * defaultstr)
 
 			out.iprintln(indent,"void Parse(xmlNodePtr child);");
 			out.iprintln(indent,"void Write(xmlStream & out);");
-			out.iprintln(indent,"bool isset() const { return m_bset; }");
+			if (!m_attributes.empty())
+			{
+				bool first = true ;
+				out.iprintln(indent,"bool isset() const");
+				out.iprintln(indent++,"{");
+				out.iprintf (indent,"return");
+				for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
+				{
+					xsdAttribute * a = *ai ;
+					if (!first)
+					{
+						out.printf(" || ");
+					}
+					out.printf("%s.isset()",a->getCppName());
+					first = false;
+				}
+				out.println(";");
+				out.iprintln(--indent,"}");
+			}
+			else
+			{
+				out.iprintln(indent,"bool isset() const { return m_bset; }");
+			}
 			out.iprintln(indent,"void set(bool b)  { m_bset = b; }");
 			out.iprintln(indent,"private: bool m_bset;");
 			out.iprintln(--indent,"};");
@@ -1259,9 +1296,15 @@ void xsdAttribute::GenWrite(CppFile & out,int indent,xsdElement * elem)
 	if (elem->isArray())
 		var += "[i]";
 	if (m_type != NULL && m_type->isScalar())
-			out.iprintln(indent,"out.putattr(\"%s\",%s.%s.get());",getName(),var.c_str(),getCppName());
+	{
+		out.iprintln(indent++,"if (%s.%s.isset())",var.c_str(),getCppName());
+		out.iprintln(indent,"out.putattr(\"%s\",%s.%s.get());",getName(),var.c_str(),getCppName());
+	}
 	else
+	{
+		out.iprintln(indent++,"if (%s.%s.isset())",var.c_str(),getCppName());
 		out.iprintln(indent,"out.putattr(\"%s\",%s.%s.gets());",getName(),var.c_str(),getCppName());
+	}
 }
 
 void xsdAttrList::GenWrite(CppFile & out,int indent,xsdElement * elem)
