@@ -428,7 +428,7 @@ void xsdComplexType::GenHeader(CppFile & out,int indent,const char * defaultstr)
 				bool first = true ;
 				out.iprintln(indent,"bool isset() const");
 				out.iprintln(indent++,"{");
-				out.iprintf (indent,"return");
+				out.iprintf (indent,"return ");
 				for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
 				{
 					xsdAttribute * a = *ai ;
@@ -899,6 +899,14 @@ const char * cmpop(enum cmp op)
 
 void GenCheckMinMax(CppFile & out,int indent,enum cmp opmin,enum cmp opmax,bool sign,int minval,int maxval)
 {
+	if (opmin == cmp_lt && opmax == cmp_gt && minval == maxval)
+	{
+		/*
+		 * x < 1 && x > 1 ergibt x != 1
+		 */
+		out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(cmp_ne),minval);
+
+	}
 	if ((sign || minval > 0) && !(opmin == cmp_lt && minval <= 0))
 	{
 		out.iprintln(indent,"if (val %s %d || val %s %d) throw new xs_invalidInteger(val);",cmpop(opmin),minval,cmpop(opmax),maxval);
@@ -995,7 +1003,12 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 				else if (m_minLength.isset() && m_maxLength.isset())
 				{
 					out.iprintln(indent,"int len = strlen(str);");
-					out.iprintln(indent,"if (len < %d || len > %d)",m_minLength.get(),m_maxLength.get());
+					if (m_minLength.get() == m_maxLength.get())
+						out.iprintln(indent,"if (len != %d)",m_minLength.get());
+					else if (m_minLength.get() == 0)
+						out.iprintln(indent,"if (len > %d)",m_maxLength.get());
+					else
+						out.iprintln(indent,"if (len < %d || len > %d)",m_minLength.get(),m_maxLength.get());
 					out.iprintln(indent,"  throw new xs_invalidString(str);");
 				}
 				else if (m_minLength.isset())
