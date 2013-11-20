@@ -904,16 +904,16 @@ void GenCheckMinMax(CppFile & out,int indent,enum cmp opmin,enum cmp opmax,bool 
 		/*
 		 * x < 1 && x > 1 ergibt x != 1
 		 */
-		out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(cmp_ne),minval);
+		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(cmp_ne),minval);
 
 	}
 	if ((sign || minval > 0) && !(opmin == cmp_lt && minval <= 0))
 	{
-		out.iprintln(indent,"if (val %s %d || val %s %d) throw new xs_invalidInteger(val);",cmpop(opmin),minval,cmpop(opmax),maxval);
+		out.iprintln(indent,"if (val %s %d || val %s %d) throw xs_invalidInteger(val);",cmpop(opmin),minval,cmpop(opmax),maxval);
 	}
 	else
 	{
-		out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(opmax),maxval);
+		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(opmax),maxval);
 	}
 }
 
@@ -921,13 +921,13 @@ void GenCheckMin(CppFile & out,int indent,enum cmp  opmin,bool sign,int minval)
 {
 	if ((sign || minval > 0) && !(opmin == cmp_lt && minval <= 0))
 	{
-		out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(opmin),minval);
+		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(opmin),minval);
 	}
 }
 
 void GenCheckMax(CppFile & out,int indent,enum cmp  opmax,bool sign,int maxval)
 {
-	out.iprintln(indent,"if (val %s %d) throw new xs_invalidInteger(val);",cmpop(opmax),maxval);
+	out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(opmax),maxval);
 }
 
 void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
