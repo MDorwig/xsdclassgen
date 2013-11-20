@@ -998,7 +998,7 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 				{
 					out.iprintln(indent,"int len = strlen(str);");
 					out.iprintln(indent,"if (len != %d)",m_length.get());
-					out.iprintln(indent,"  throw new xs_invalidString(str);");
+					out.iprintln(indent,"  throw xs_invalidString(str);");
 				}
 				else if (m_minLength.isset() && m_maxLength.isset())
 				{
@@ -1009,19 +1009,19 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 						out.iprintln(indent,"if (len > %d)",m_maxLength.get());
 					else
 						out.iprintln(indent,"if (len < %d || len > %d)",m_minLength.get(),m_maxLength.get());
-					out.iprintln(indent,"  throw new xs_invalidString(str);");
+					out.iprintln(indent,"  throw xs_invalidString(str);");
 				}
 				else if (m_minLength.isset())
 				{
 					out.iprintln(indent,"int len = strlen(str);");
 					out.iprintln(indent,"if (len < %d)",m_minLength.get());
-					out.iprintln(indent,"  throw new xs_invalidString(str);");
+					out.iprintln(indent,"  throw xs_invalidString(str);");
 				}
 				else if (m_maxLength.isset())
 				{
 					out.iprintln(indent,"int len = strlen(str);");
 					out.iprintln(indent,"if (len > %d)",m_maxLength.get());
-					out.iprintln(indent,"  throw new xs_invalidString(str);");
+					out.iprintln(indent,"  throw xs_invalidString(str);");
 				}
 				out.iprintln(indent,  "m_value.sets(str);");
 			}
