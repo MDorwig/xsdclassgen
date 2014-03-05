@@ -185,7 +185,7 @@ void xsdElement::GenWrite(CppFile & out)
 {
 	if (isArray())
 	{
-		out.iprintln(1,"for(int i = 0 ; i < %s.count() ; i++)",getCppName());
+		out.iprintln(1,"for(size_t i = 0 ; i < %s.count() ; i++)",getCppName());
 		out.iprintln(1,"{");
 		GenWriteElem(out,2,this);
 		out.iprintln(1,"}");
@@ -276,6 +276,16 @@ void xsdSimpleContent::GenHeader(CppFile &out,int indent,const char * defaultstr
 	if (tashdr() || m_content == NULL)
 		return ;
 	m_content->GenHeader(out,indent,defaultstr);
+}
+
+void xsdComplexRestriction::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
+{
+	out.iprintln(1,"m_value.sets(getContent(node));");
+}
+
+void xsdComplexRestriction::GenWrite(CppFile & out,Symtab & st)
+{
+	out.iprintln(1,"m_value.Write(out);");
 }
 
 void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
@@ -964,6 +974,7 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 			out.iprintln(indent," */");
 			out.iprintln(indent,"struct %s",tname);
 			out.iprintln(indent++,"{");
+			m_attributes.GenHeader(out,indent,defaultstr);
 			if (isScalar() || isString())
 			{
 				/*
