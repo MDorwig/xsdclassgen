@@ -969,11 +969,8 @@ public:
 		m_tag = type_complexRestriction ;
 		m_type = NULL;
 	}
-	void GenWrite(CppFile & out,Symtab & st)
-	{
-		if (m_type != NULL)
-			m_type->GenWrite(out,st);
-	}
+	void GenWrite(CppFile & out,Symtab & st);
+	void GenImpl(CppFile & out,Symtab & st,const char * defaultstr);
 	xsdType * m_type ;
 };
 
@@ -1016,6 +1013,12 @@ public:
 		return xsdType::hasAttributes() ||
 					 (m_type != NULL && m_type->hasAttributes());
 	}
+	xsdAttrList & GetAttributes()
+	{
+		if (m_type != NULL)
+			return m_type->GetAttributes();
+		return m_attributes;
+	}
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
 		if (m_type != NULL)
@@ -1023,6 +1026,13 @@ public:
 		xsdType::GenWriteAttr(out,indent,elem);
 	}
 
+	void GenAttrImpl(CppFile & out,Symtab & st)
+	{
+		if (m_type != NULL)
+			m_type->GenAttrImpl(out,st);
+		else
+			xsdType::GenAttrImpl(out,st);
+	}
 	void GenWrite(CppFile & out,Symtab & st)
 	{
 		if (m_type != NULL)

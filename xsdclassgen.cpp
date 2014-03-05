@@ -224,6 +224,7 @@ public:
 typedef std::list<xsdNamespace*> NamespaceList ;
 NamespaceList namespaces;
 xsdNamespace *targetNamespace;
+xsdNamespace * defaultNamespace;
 
 std::string MakeIdentifier(const char * prefix,const char * name)
 {
@@ -278,7 +279,7 @@ xsdType * FindType(const char * name)
 {
 	xsdType * type = NULL;
 	std::string prefix;
-	xsdNamespace * ns = targetNamespace;
+	xsdNamespace * ns = defaultNamespace;
 	if (strchr(name,':') != NULL)
 	{
 		while(*name != ':')
@@ -298,7 +299,7 @@ xsdType * FindType(xsdTypename * tn)
 	xsdType * type ;
 	xsdNamespace * ns ;
 	if (tn->m_ns.empty())
-		ns = targetNamespace;
+		ns = defaultNamespace;
 	else
 		ns = FindNamespace(tn->m_ns.c_str());
 	if (ns != NULL)
@@ -919,7 +920,52 @@ xsdComplexExtension * ParseComplexExtension(xmlNodePtr type,xsdType * parent,Sym
 
 xsdComplexRestriction * ParseComplexRestriction(xmlNodePtr type,xsdType * parent,Symtab & st)
 {
-	return NULL;
+	const char * base = NULL;
+	int chseq = 0 ;
+	xsd_keyword kw ;
+	xsdComplexRestriction * rest ;
+	for_each_attr(attr,type)
+	{
+		kw = Lookup(attr->name);
+		switch(kw)
+		{
+			case xsd_base:
+				base = getContent(attr->children);
+			break ;
+			default:
+				not_supported_error(attr,type);
+			break ;
+		}
+	}
+	rest = new xsdComplexRestriction(base,parent);
+	if (base != NULL)
+		rest->m_base = FindType(base);
+	for_each_child(child,type)
+	{
+		if (child->type == XML_ELEMENT_NODE)
+		{
+			kw = Lookup(child->name);
+			switch(kw)
+			{
+				case	xsd_choice:
+					rest->m_type = ParseChoice(child,rest,st,chseq++);
+				break ;
+				case	xsd_sequence:
+					rest->m_type = ParseSequence(child,rest,st);
+				break ;
+				case	xsd_all:
+					rest->m_type = ParseAll(child,rest,st);
+				break ;
+				case	xsd_attribute:
+					rest->m_attributes.push_back(ParseAttribute(child,rest,st));
+				break ;
+				default:
+					not_supported_error(child,type);
+				break ;
+			}
+		}
+	}
+	return rest;
 }
 
 xsdComplexContent * ParseComplexContent(xmlNodePtr type,xsdElement * elem,xsdType * parent,Symtab & st)
@@ -1408,6 +1454,34 @@ void ParseInclude(xmlNodePtr child,Symtab & st)
 	}
 }
 
+void InstallXMLSchematypes(const char * href,xsdNamespace * ns)
+{
+	if (strstr(href,"XMLSchema") != NULL)
+	{
+		ns->AddType(new xsdType("int",type_int,NULL,true));
+		ns->AddType(new xsdType("string",type_string,NULL,true));
+		ns->AddType(new xsdType("boolean",type_boolean,NULL,true));
+		ns->AddType(new xsdType("decimal",type_decimal,NULL,true));
+		ns->AddType(new xsdType("float",type_float,NULL,true));
+		ns->AddType(new xsdType("double",type_double,NULL,true));
+		ns->AddType(new xsdType("integer",type_integer,NULL,true));
+		ns->AddType(new xsdType("long",type_long,NULL,true));
+		ns->AddType(new xsdType("short",type_short,NULL,true));
+		ns->AddType(new xsdType("byte",type_byte,NULL,true));
+		ns->AddType(new xsdType("nonNegativeInteger",type_nonNegativeInteger,NULL,true));
+		ns->AddType(new xsdType("positiveInteger",type_positiveInteger,NULL,true));
+		ns->AddType(new xsdType("unsignedLong",type_unsignedLong,NULL,true));
+		ns->AddType(new xsdType("unsignedInt",type_unsignedInt,NULL,true));
+		ns->AddType(new xsdType("unsignedShort",type_unsignedShort,NULL,true));
+		ns->AddType(new xsdType("unsignedByte",type_unsignedByte,NULL,true));
+		ns->AddType(new xsdType("unsignedPositiveInteger",type_positiveInteger,NULL,true));
+		ns->AddType(new xsdType("dateTime",type_dateTime,NULL,true));
+		ns->AddType(new xsdType("anyURI",type_string,NULL,true));
+		ns->AddType(new xsdType("language",type_string,NULL,true));
+		defaultNamespace = ns ;
+	}
+}
+
 xsdSchema * ParseSchema(xmlNodePtr schema,Symtab & st)
 {
 	xsdSchema * xmlschema = new xsdSchema();
@@ -1422,35 +1496,20 @@ xsdSchema * ParseSchema(xmlNodePtr schema,Symtab & st)
 			{
 				printf("new namespace prefix:\"%s\" href=\"%s\"\n",nsdef->prefix,nsdef->href);
 				ns = AddNamespace((const char*)nsdef->prefix,(const char*)nsdef->href);
-				if (strstr((const char*)nsdef->href,"XMLSchema") != NULL)
-				{
-					ns->AddType(new xsdType("int",type_int,NULL,true));
-					ns->AddType(new xsdType("string",type_string,NULL,true));
-					ns->AddType(new xsdType("boolean",type_boolean,NULL,true));
-					ns->AddType(new xsdType("decimal",type_decimal,NULL,true));
-					ns->AddType(new xsdType("float",type_float,NULL,true));
-					ns->AddType(new xsdType("double",type_double,NULL,true));
-					ns->AddType(new xsdType("integer",type_integer,NULL,true));
-					ns->AddType(new xsdType("long",type_long,NULL,true));
-					ns->AddType(new xsdType("short",type_short,NULL,true));
-					ns->AddType(new xsdType("byte",type_byte,NULL,true));
-					ns->AddType(new xsdType("nonNegativeInteger",type_nonNegativeInteger,NULL,true));
-					ns->AddType(new xsdType("positiveInteger",type_positiveInteger,NULL,true));
-					ns->AddType(new xsdType("unsignedLong",type_unsignedLong,NULL,true));
-					ns->AddType(new xsdType("unsignedInt",type_unsignedInt,NULL,true));
-					ns->AddType(new xsdType("unsignedShort",type_unsignedShort,NULL,true));
-					ns->AddType(new xsdType("unsignedByte",type_unsignedByte,NULL,true));
-					ns->AddType(new xsdType("unsignedPositiveInteger",type_positiveInteger,NULL,true));
-					ns->AddType(new xsdType("dateTime",type_dateTime,NULL,true));
-					ns->AddType(new xsdType("anyURI",type_string,NULL,true));
-					ns->AddType(new xsdType("language",type_string,NULL,true));
-				}
+				InstallXMLSchematypes((const char*)nsdef->href,ns);
 			}
 			else
 			{
-				ns = FindNamespace("");
+				ns = FindNamespaceRef((const char*)nsdef->href);
 				if (ns == NULL)
-					AddNamespace("",(const char*)nsdef->href);
+				{
+					ns = AddNamespace("",(const char*)nsdef->href);
+					InstallXMLSchematypes((const char*)nsdef->href,ns);
+				}
+				else
+				{
+
+				}
 			}
 		}
 	}
