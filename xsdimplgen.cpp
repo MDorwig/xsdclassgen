@@ -260,7 +260,7 @@ void xsdSimpleExtension::GenImpl(CppFile & out,Symtab & st,const char * defaults
 		out.iprintln(1,"%s::Parse(node);",m_base->getCppName());
 	if (m_exttype != NULL)
 		m_exttype->GenImpl(out,st,defaultstr);
-	if (m_base != NULL && (m_base->isScalar() || m_base->isString()))
+	if (m_base != NULL && (m_base->isScalar() || m_base->isString() || m_base->isEnum()))
 	{
 		out.iprintln(1,"sets(getContent(node));");
 	}

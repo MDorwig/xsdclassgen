@@ -322,6 +322,7 @@ public:
 	virtual bool  isInteger();
 	virtual bool  isfloat();
 	virtual bool  isString();
+	virtual bool  isEnum();
 	virtual bool  isScalar();
 	virtual bool  isStruct();
 	virtual bool  isSigned();
