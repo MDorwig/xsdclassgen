@@ -305,6 +305,8 @@ xsdType * FindType(xsdTypename * tn)
 	if (ns != NULL)
 	{
 		type = ns->FindType(tn->m_name.c_str());
+		if (type == NULL && defaultNamespace != targetNamespace)
+			type = targetNamespace->FindType(tn->m_name.c_str());
 	}
 	return type ;
 }
@@ -1734,6 +1736,19 @@ bool  xsdType::isString()
 		{
 			if (simple->m_rest->m_enum == NULL)
 				return simple->m_rest->isString();
+		}
+	}
+	return m_tag == type_string;
+}
+
+bool  xsdType::isEnum()
+{
+	if (m_tag == type_simple)
+	{
+		xsdSimpleType * simple = (xsdSimpleType*)this;
+		if (simple->m_rest != NULL)
+		{
+			return (simple->m_rest != NULL && simple->m_rest->m_enum != NULL);
 		}
 	}
 	return m_tag == type_string;

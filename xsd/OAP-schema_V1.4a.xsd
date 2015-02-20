@@ -146,12 +146,11 @@
 						
 					</xs:annotation>
 				</xs:element>
-				<xs:element name="Location_Request" type="oaLocationRequest">
+				<xs:element name="Location_Request" type="xs:string">
 					<xs:annotation>
 						<xs:documentation xmlns="http://www.w3.org/1999/xhtml">
 							This is a request to the portable device to send a Location_Response message back with current location.
 						</xs:documentation>
-						
 					</xs:annotation>
 				</xs:element>
 				<xs:element name="Location_Response" type="oaLocationResponse">
