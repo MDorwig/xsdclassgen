@@ -58,7 +58,10 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 	for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
 	{
 		xsdElement * elem = *ei ;
-		out.iprintln(indent,"if (%s.isset())",elem->getlvalue()) ;
+		if (elem->isPtr())
+			out.iprintln(indent,"if (%s != NULL && %s.isset())",elem->getCppName(),elem->getlvalue()) ;
+		else
+			out.iprintln(indent,"if (%s.isset())",elem->getlvalue()) ;
 		out.iprintln(indent+1,"return true;") ;
 	}
 	for (typeIterator ti = m_types.begin() ; ti != m_types.end() ; ti++)

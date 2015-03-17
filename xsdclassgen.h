@@ -270,9 +270,14 @@ public:
 class xsdAttrList : public std::list<xsdAttribute*>
 {
 public:
+	~xsdAttrList()
+	{
+
+	}
 	void GenHeader(CppFile & out,int indent,const char * defaultstr);
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenWrite(CppFile & out,int indent,xsdElement * elem);
+	xsdAttrList & operator += (xsdAttrList & l);
 };
 
 typedef xsdAttrList::iterator attrIterator ;
@@ -401,7 +406,7 @@ public:
 	virtual void GenAssignment(CppFile & out,int indent,const char * dest,const char * src);
 	virtual bool CheckCycle(xsdElement * elem) { return false;}
 	virtual bool hasAttributes() { return !m_attributes.empty(); }
-	virtual xsdAttrList & GetAttributes() { return m_attributes;}
+	virtual void GetAttributes(xsdAttrList & lst) { lst = m_attributes;}
 
 	std::string m_ns;
 	std::string m_name ;
@@ -528,9 +533,9 @@ public:
 				   (m_base != NULL && m_base->hasAttributes());
 	}
 
-	xsdAttrList & GetAttributes()
+	void GetAttributes(xsdAttrList & lst)
 	{
-		return m_attributes;
+		lst = m_attributes;
 	}
 
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
@@ -580,22 +585,19 @@ public:
 	bool hasAttributes()
 	{
 		return xsdType::hasAttributes() ||
-		      (m_base != NULL && m_base->hasAttributes()) ||
 			    (m_exttype != NULL && m_exttype->hasAttributes());
 	}
 
-	xsdAttrList & GetAttributes()
+	void GetAttributes(xsdAttrList & lst)
 	{
-		if (m_base != NULL && m_base->hasAttributes())
-			return m_base->GetAttributes();
-		return m_attributes;
+		lst += m_attributes;
 	}
 
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
-		xsdType::GenWriteAttr(out,indent,elem);
 		if (m_base != NULL)
 			m_base->GenWriteAttr(out,indent,elem);
+		xsdType::GenWriteAttr(out,indent,elem);
 		if (m_exttype != NULL)
 			m_exttype->GenWriteAttr(out,indent,elem);
 	}
@@ -621,11 +623,11 @@ public:
 				   (m_content != NULL && m_content->hasAttributes());
   }
 
-	xsdAttrList & GetAttributes()
+	void GetAttributes(xsdAttrList & lst)
 	{
 		if (m_content != NULL && m_content->hasAttributes())
-			return m_content->GetAttributes();
-		return m_attributes;
+			m_content->GetAttributes(lst);
+		lst += m_attributes;
 	}
 
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
@@ -944,19 +946,25 @@ public:
 		return xsdType::hasAttributes() ||
 				   (m_type != NULL && m_type->hasAttributes());
 	}
-	xsdAttrList & GetAttributes()
+
+	void GetAttributes(xsdAttrList & lst)
 	{
 		if (m_type != NULL && m_type->hasAttributes())
-			return m_type->GetAttributes();
-		return m_attributes;
+			m_type->GetAttributes(lst);
+		lst += m_attributes;
 	}
+
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
 		if (m_type != NULL)
 			m_type->GenWriteAttr(out,indent,elem);
 		xsdType::GenWriteAttr(out,indent,elem);
 	}
-
+	/* (
+	 *    simpleContent  |
+	 *    complexContent |
+	 *    ( all | choice | sequence), attribute)
+	 */
 	xsdType *   m_type;
 	xsdElement* m_rootelem;
 };
@@ -991,10 +999,16 @@ public:
 	void GenWrite(CppFile & out,Symtab & st)
 	{
 		if (m_type != NULL)
+		{
 			m_type->GenWrite(out,st);
+		}
+		else if (m_basetypename != NULL)
+		{
+			out.iprintln(1,"%s::Write(out);",m_basetypename->getCppName());
+		}
 	}
 
-	xsdType * m_type ;
+	xsdType * m_type ; /* group | all | choice | sequence */
 };
 
 class xsdComplexContent : public xsdType
@@ -1014,12 +1028,14 @@ public:
 		return xsdType::hasAttributes() ||
 					 (m_type != NULL && m_type->hasAttributes());
 	}
-	xsdAttrList & GetAttributes()
+
+	void GetAttributes(xsdAttrList & lst)
 	{
 		if (m_type != NULL)
-			return m_type->GetAttributes();
-		return m_attributes;
+			m_type->GetAttributes(lst);
+		lst += m_attributes;
 	}
+
 	void GenWriteAttr(CppFile & out,int indent,xsdElement * elem)
 	{
 		if (m_type != NULL)

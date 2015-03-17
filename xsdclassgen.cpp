@@ -2277,6 +2277,15 @@ void xsdAttrList::GenHeader(CppFile& out, int indent, const char* defaultstr)
 	}
 }
 
+xsdAttrList & xsdAttrList::operator +=(xsdAttrList & l)
+{
+	for (attrIterator ai = l.begin() ; ai != l.end() ; ai++)
+	{
+		push_back(*ai);
+	}
+	return *this;
+}
+
 bool xsdSequence::CheckCycle(xsdElement* elem)
 {
 	return m_elements.CheckCycle(elem);
