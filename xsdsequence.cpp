@@ -64,6 +64,15 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 			out.iprintln(indent,"if (%s.isset())",elem->getlvalue()) ;
 		out.iprintln(indent+1,"return true;") ;
 	}
+	if (m_parent != NULL)
+	{
+		for (attrIterator ai = m_parent->m_attributes.begin() ; ai != m_parent->m_attributes.end() ; ai++)
+		{
+			xsdAttribute * a = *ai;
+			out.iprintln(indent,"if (%s.isset())",a->getCppName()) ;
+				out.iprintln(indent+1,"return true;") ;
+		}
+	}
 	for (typeIterator ti = m_types.begin() ; ti != m_types.end() ; ti++)
 	{
 		xsdType * type = * ti ;

@@ -99,21 +99,24 @@ void GenWriteElementCases(CppFile & out,Symtab & st,xsdElementList & elements)
 		if (s != NULL)
 		{
 			const char * name = elem->getName();
-			out.iprintln(indent++,"case %s::%s:",elem->getChoiceTypename(),elem->m_choice_selector.c_str());
-			out.iprintln(indent,  "if ((*%s.%s).isset())",elem->getChoiceVarname(),elem->getCppName());
+			out.iprintln(indent,  "case %s::%s:",elem->getChoiceTypename(),elem->m_choice_selector.c_str());
 			out.iprintln(indent++,"{");
+			out.iprintln(indent  ,  "%s * sel = %s.%s;",elem->m_typename->getCppName(),elem->getChoiceVarname(),elem->getCppName());
+			out.iprintln(indent,    "if (sel->isset())");
+			out.iprintln(indent++,  "{");
 			if (elem->hasAttributes())
 			{
-				out.iprintln(indent,"out.putrawstring(\"<%s\");",name);
+				out.iprintln(indent,    "out.putrawstring(\"<%s\");",name);
 				elem->GenWriteAttr(out,indent);
-				out.iprintln(indent,"out.putrawstring(\">\");");
+				out.iprintln(indent,    "out.putrawstring(\">\");");
 			}
 			else
-				out.iprintln(indent,"out.putrawstring(\"<%s>\");",name);
-			out.iprintln(4,   "(*%s.%s).Write(out);",elem->getChoiceVarname(),elem->getCppName());
-			out.iprintln(4,  "out.putrawstring(\"</%s>\");",name);
-			out.iprintln(3,  "}");
-			out.iprintln(2,"break;");
+				out.iprintln(indent,    "out.putrawstring(\"<%s>\");",name);
+			out.iprintln(indent,      "sel->Write(out);");
+			out.iprintln(indent,      "out.putrawstring(\"</%s>\");",name);
+			out.iprintln(--indent,   "}");
+			out.iprintln(--indent,"}");
+			out.iprintln(indent,"break;");
 		}
 	}
 	out.iprintln(2,"default:");
@@ -342,7 +345,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 			xsdElement * elem = * ei ;
 			out.iprintln(indent,"%s,",elem->m_choice_selector.c_str());
 		}
-		out.iprintln(--indent,"} m_selected;");
+		out.iprintln(--indent,"} m_selected;\n");
 
 		for (elementIterator ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
 		{
@@ -351,10 +354,12 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 			out.iprintln(indent++,"{");
 			out.iprintln(indent,    "m_selected = %s;",elem->m_choice_selector.c_str());
 			out.iprintln(indent,    "%s = elem;",elem->getCppName());
-			out.iprintln(--indent,"}");
+			out.iprintln(--indent,"}\n");
 		}
-		out.iprintln(indent,"bool isset() const { return m_selected != e_none_selected; }");
-		m_elements.GenHeader(out,indent);
+		out.iprintln(indent,"bool isset() const { return m_selected != e_none_selected; }\n");
+		out.iprintln(indent,"union {");
+		m_elements.GenHeader(out,indent+1);
+		out.iprintln(indent,"};\n");
 		/*
 		 * generate constructor to initialize the choices to NULL
 		 */
@@ -365,8 +370,9 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		{
 			xsdElement * elem = * ei ;
 			out.iprintln(indent,"%s = NULL;",elem->getCppName());
+			break ; // union : einer ist genug
 		}
-		out.iprintln(--indent,"}");
+		out.iprintln(--indent,"}\n");
 
 		/*
 		 * generate the destructor to delete the selected choice
@@ -389,7 +395,7 @@ void xsdChoice::GenHeader(CppFile &out,int indent,const char * defaultstr)
 		out.iprintln(--indent,"} %s;",getVarname());
 		if (openstruct)
 		{
-			out.iprintln(--indent,"};");
+			out.iprintln(--indent,"};\n");
 		}
 	}
 }
@@ -881,7 +887,7 @@ void xsdEnum::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 		  xsdEnumValue * val = *ei ;
 			out.iprintln(2,"case sy_%s: m_value = %s; m_bset = true ; break;",val->getSymbolName(),val->getEnumValue());
 	  }
-	    out.iprintln(2,"default: throw xs_invalidString(str) ; break;");
+	    out.iprintln(2,"default: throw xs_invalidString(str,typeid(this).name()) ; break;");
 	  out.iprintln(1,"}");
 	out.iprintln(0,"}\n");
 	out.iprintln(0,"void %s::Write(xmlStream & out)",qname.c_str());
@@ -928,16 +934,16 @@ void GenCheckMinMax(CppFile & out,int indent,enum cmp opmin,enum cmp opmax,bool 
 		/*
 		 * x < 1 && x > 1 ergibt x != 1
 		 */
-		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(cmp_ne),minval);
+		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val,typeid(this).name();",cmpop(cmp_ne),minval);
 
 	}
 	if ((sign || minval > 0) && !(opmin == cmp_lt && minval <= 0))
 	{
-		out.iprintln(indent,"if (val %s %d || val %s %d) throw xs_invalidInteger(val);",cmpop(opmin),minval,cmpop(opmax),maxval);
+		out.iprintln(indent,"if (val %s %d || val %s %d) throw xs_invalidInteger(val,typeid(this).name());",cmpop(opmin),minval,cmpop(opmax),maxval);
 	}
 	else
 	{
-		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(opmax),maxval);
+		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val,typeid(this).name());",cmpop(opmax),maxval);
 	}
 }
 
@@ -945,13 +951,13 @@ void GenCheckMin(CppFile & out,int indent,enum cmp  opmin,bool sign,int minval)
 {
 	if ((sign || minval > 0) && !(opmin == cmp_lt && minval <= 0))
 	{
-		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(opmin),minval);
+		out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val,typeid(this).name());",cmpop(opmin),minval);
 	}
 }
 
 void GenCheckMax(CppFile & out,int indent,enum cmp  opmax,bool sign,int maxval)
 {
-	out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val);",cmpop(opmax),maxval);
+	out.iprintln(indent,"if (val %s %d) throw xs_invalidInteger(val,typeid(this).name());",cmpop(opmax),maxval);
 }
 
 void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defaultstr)
@@ -986,7 +992,10 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 			out.iprintln(indent,"/*");
 			out.iprintln(indent," * xs:restriction %s base %s ",getName(),m_base->getCppName());
 			out.iprintln(indent," */");
-			out.iprintln(indent,"struct %s",tname);
+			if (m_base->isString())
+				out.iprintln(indent,"struct %s : public xs_string",tname);
+			else
+				out.iprintln(indent,"struct %s",tname);
 			out.iprintln(indent++,"{");
 			m_attributes.GenHeader(out,indent,defaultstr);
 			if (isScalar() || isString())
@@ -1003,65 +1012,92 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 				}
 				if (isString())
 				{
-					out.iprintln(indent,"bool empty() { return m_value.empty();}");
+					//out.iprintln(indent,"virtual ~%s() {}",tname);
+					//out.iprintln(indent,"bool empty() { return m_value.empty();}");
+					//out.iprintln(indent,"void sets(const char * str,int n) { xs_string::sets(str,n);}");
+					//out.iprintln(indent,"int  length() { return m_value.length();}");
 				}
 			}
 			/*
 			 * generate sets function
 			 */
-			out.iprintln(indent,  "void sets(const char * str)");
-			out.iprintln(indent++,"{");
 			if (m_base->isScalar())
 			{
+				out.iprintln(indent,  "void sets(const char * str)");
+				out.iprintln(indent++,"{");
 				out.iprintln(indent,    "%s v;",m_base->getNativeName());
 				out.iprintln(indent,    "v = %s::Parse(str);",m_base->getCppName());
-				out.iprintln(indent,  "m_value.set(v);");
+				out.iprintln(indent,    "m_value.set(v);");
+				out.iprintln(--indent,"}");
 			}
 			else if (m_base->isString())
 			{
-				if (m_length.isset())
+
+				if (m_length.isset() || m_minLength.isset() || m_maxLength.isset())
 				{
-					out.iprintln(indent,"int len = strlen(str);");
-					out.iprintln(indent,"if (len != %d)",m_length.get());
-					out.iprintln(indent,"  throw xs_invalidString(str);");
-				}
-				else if (m_minLength.isset() && m_maxLength.isset())
-				{
-					out.iprintln(indent,"int len = strlen(str);");
-					if (m_minLength.get() == m_maxLength.get())
-						out.iprintln(indent,"if (len != %d)",m_minLength.get());
-					else if (m_minLength.get() == 0)
+					out.iprintln(indent,  "void sets(const char *str)");
+					out.iprintln(indent++,"{");
+					out.iprintln(indent,    "setsn(str,strlen(str));");
+					out.iprintln(--indent,"}\n");
+
+					out.iprintln(indent,  "void sets(const char * str,size_t n)");
+					out.iprintln(indent++,"{");
+					out.iprintln(indent,    "setsn(str,strnlen(str,n));");
+					out.iprintln(--indent,"}\n");
+
+					out.iprintln(indent,  "void setsn(const char *str,size_t len)");
+					out.iprintln(indent++,"{");
+
+					if (m_length.isset())
+					{
+						out.iprintln(indent,"if (len != %d)",m_length.get());
+						out.iprintln(indent,"  throw xs_invalidString(str,typeid(this).name());");
+					}
+					else if (m_minLength.isset() && m_maxLength.isset())
+					{
+						if (m_minLength.get() == m_maxLength.get())
+							out.iprintln(indent,"if (len != %d)",m_minLength.get());
+						else if (m_minLength.get() == 0)
+							out.iprintln(indent,"if (len > %d)",m_maxLength.get());
+						else
+							out.iprintln(indent,"if (len < %d || len > %d)",m_minLength.get(),m_maxLength.get());
+						out.iprintln(indent,"  throw xs_invalidString(str,typeid(this).name());");
+					}
+					else if (m_minLength.isset())
+					{
+						out.iprintln(indent,"if (len < %d)",m_minLength.get());
+						out.iprintln(indent,"  throw xs_invalidString(str,typeid(this).name());");
+					}
+					else if (m_maxLength.isset())
+					{
 						out.iprintln(indent,"if (len > %d)",m_maxLength.get());
-					else
-						out.iprintln(indent,"if (len < %d || len > %d)",m_minLength.get(),m_maxLength.get());
-					out.iprintln(indent,"  throw xs_invalidString(str);");
+						out.iprintln(indent,"  throw xs_invalidString(str,typeid(this).name());");
+					}
+					out.iprintln(indent,  "xs_string::sets(str,len);");
+					out.iprintln(--indent,"}");
 				}
-				else if (m_minLength.isset())
+				else
 				{
-					out.iprintln(indent,"int len = strlen(str);");
-					out.iprintln(indent,"if (len < %d)",m_minLength.get());
-					out.iprintln(indent,"  throw xs_invalidString(str);");
+					out.iprintln(indent,  "using xs_string::sets;");
 				}
-				else if (m_maxLength.isset())
-				{
-					out.iprintln(indent,"int len = strlen(str);");
-					out.iprintln(indent,"if (len > %d)",m_maxLength.get());
-					out.iprintln(indent,"  throw xs_invalidString(str);");
-				}
-				out.iprintln(indent,  "m_value.sets(str);");
 			}
 			else
 			{
-				out.iprintln(indent,  "m_value.sets(str);");
+				out.iprintln(indent,  "void sets(const char * str)");
+				out.iprintln(indent++,"{");
+				out.iprintln(indent,    "m_value.sets(str);");
+				out.iprintln(--indent,"}");
 			}
-			out.iprintln(--indent,"}");
 			/*
 			 * generate set/get function
 			 */
-			out.iprintln(indent,   "void set(const %s & val)",getReturnType());
-			out.iprintln(indent++,"{");
-			out.iprintln(indent,     "m_value = val;");
-			out.iprintln(--indent,"}");
+			if (!m_base->isString())
+			{
+				out.iprintln(indent,   "void set(const %s & val)",getReturnType());
+				out.iprintln(indent++,"{");
+				out.iprintln(indent,     "m_value = val;");
+				out.iprintln(--indent,"}");
+			}
 			if (m_base->isScalar())
 			{
 				bool sign = m_base->isSigned() ;
@@ -1093,20 +1129,24 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 			}
 			if (!m_base->isString())
 			{
+				/*
 				out.iprintln(indent,  "const %s & get() const",getReturnType());
 				out.iprintln(indent++,"{");
 				out.iprintln(indent,"  return m_value;");
 				out.iprintln(--indent,"}");
+				*/
 			}
 			/*
 			 * generate the gets function
 			 */
 			if (m_base->isString())
 			{
+/*
 				out.iprintln(indent,"const char * gets() const");
 				out.iprintln(indent++,"{");
 				out.iprintln(indent,"return m_value.gets();");
 				out.iprintln(--indent,"}");
+				*/
 			}
 			else
 			{
@@ -1117,9 +1157,12 @@ void xsdSimpleRestriction::GenHeader(CppFile & out,int indent,const char * defau
 
 				//out.iprintln(indent,"void validate() throw();");
 			}
-			out.iprintln(indent,"bool isset() const { return m_value.isset();}") ;
-			out.iprintln(indent,"void Write(xmlStream & out);");
-			out.iprintln(indent,"%s m_value;",basename);
+			if (!m_base->isString())
+			{
+				out.iprintln(indent,"bool isset() const { return m_value.isset();}") ;
+				out.iprintln(indent,"void Write(xmlStream & out);");
+				out.iprintln(indent,"%s m_value;",basename);
+			}
 			out.iprintln(--indent,"};\n");
 		}
 		else if (m_simple != NULL)
@@ -1142,12 +1185,15 @@ void xsdSimpleRestriction::GenImpl(CppFile & out,Symtab & st,const char * defaul
 	}
 	else if (m_base != NULL)
 	{
-		m_base->GenImpl(out,st,defaultstr);
-		out.iprintln(0,"void %s::Write(xmlStream & out)",getQualifiedName().c_str());
-		out.iprintln(0,"{");
-		out.iprintln(1,"if (m_value.isset())");
-		out.iprintln(2,"m_value.Write(out);");
-		out.iprintln(0,"}");
+		if (!m_base->isString())
+		{
+			m_base->GenImpl(out,st,defaultstr);
+			out.iprintln(0,"void %s::Write(xmlStream & out)",getQualifiedName().c_str());
+			out.iprintln(0,"{");
+			out.iprintln(1,"if (m_value.isset())");
+			out.iprintln(2,"m_value.Write(out);");
+			out.iprintln(0,"}");
+		}
 	}
 	else if (m_simple != NULL)
 	{
@@ -1335,13 +1381,29 @@ void xsdAttribute::GenWrite(CppFile & out,int indent,xsdElement * elem)
 		var += "[i]";
 	if (m_type != NULL && m_type->isScalar())
 	{
-		out.iprintln(indent++,"if (%s.%s.isset())",var.c_str(),getCppName());
-		out.iprintln(indent,"out.putattr(\"%s\",%s.%s.get());",getName(),var.c_str(),getCppName());
+		if (elem->isChoice())
+		{
+			out.iprintln(indent++,"if (sel->%s.isset())",getCppName());
+			out.iprintln(indent,"out.putattr(\"%s\",sel->%s.get());",getName(),getCppName());
+		}
+		else
+		{
+			out.iprintln(indent++,"if (%s.%s.isset())",var.c_str(),getCppName());
+			out.iprintln(indent,"out.putattr(\"%s\",%s.%s.get());",getName(),var.c_str(),getCppName());
+		}
 	}
 	else
 	{
-		out.iprintln(indent++,"if (%s.%s.isset())",var.c_str(),getCppName());
-		out.iprintln(indent,"out.putattr(\"%s\",%s.%s.gets());",getName(),var.c_str(),getCppName());
+		if (elem->isChoice())
+		{
+			out.iprintln(indent++,"if (sel->%s.isset())",getCppName());
+			out.iprintln(indent,"out.putattr(\"%s\",sel->%s.gets());",getName(),getCppName());
+		}
+		else
+		{
+			out.iprintln(indent++,"if (%s.%s.isset())",var.c_str(),getCppName());
+			out.iprintln(indent,"out.putattr(\"%s\",%s.%s.gets());",getName(),var.c_str(),getCppName());
+		}
 	}
 }
 

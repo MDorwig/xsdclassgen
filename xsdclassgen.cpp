@@ -558,6 +558,12 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 			}
 		}
 	}
+	if (xsdelem->m_type == NULL && xsdtypename == NULL)
+	{
+		printf("element %s has no type\n",xsdname);
+		delete xsdelem;
+		xsdelem = NULL;
+	}
 	return xsdelem;
 }
 
@@ -592,7 +598,11 @@ xsdSequence * ParseSequence(xmlNodePtr sequence,xsdType * parent,Symtab & st)
 			switch(kw)
 			{
 				case	xsd_element:
-					xsdseq->m_elements.push_back(ParseElement(child,xsdseq,st));
+				{
+					xsdElement * e = ParseElement(child,xsdseq,st);
+					if (e != NULL)
+						xsdseq->m_elements.push_back(e);
+				}
 				break ;
 				case	xsd_group:
 					xsdseq->m_types.push_back(ParseGroup(child,xsdseq,st));
@@ -1724,7 +1734,7 @@ bool  xsdType::isfloat()
 
 bool  xsdType::isScalar()
 {
-	return isInteger() || isfloat() ;
+	return isInteger() || isfloat() || m_tag == type_boolean;
 }
 
 bool  xsdType::isString()
@@ -2167,6 +2177,7 @@ int main(int argc, char * argv[])
 		hfile.println("#include <libxml/parser.h>");
 		hfile.println("#include \"xsdtypes.h\"");
 		hfile.println("#include <exception>");
+		hfile.println("#include <typeinfo>");
 		hfile.println();
 		cppfile.println("#include \"%s\"",hfileinclude.c_str());
 		cppfile.println();

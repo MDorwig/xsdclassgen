@@ -215,6 +215,11 @@ public:
 		if (defval != NULL)
 			m_default    = defval;
 	}
+	virtual ~xsdAttrElemBase()
+	{
+		if (m_typename != NULL)
+			delete m_typename;
+	}
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
@@ -585,6 +590,7 @@ public:
 	bool hasAttributes()
 	{
 		return xsdType::hasAttributes() ||
+				  (m_base != NULL && m_base->hasAttributes()) ||
 			    (m_exttype != NULL && m_exttype->hasAttributes());
 	}
 
