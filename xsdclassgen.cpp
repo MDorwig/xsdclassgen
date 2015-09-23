@@ -560,9 +560,13 @@ xsdElement * ParseElement(xmlNodePtr element,xsdType * parent,Symtab & st)
 	}
 	if (xsdelem->m_type == NULL && xsdtypename == NULL)
 	{
-		printf("element %s has no type\n",xsdname);
-		delete xsdelem;
-		xsdelem = NULL;
+		printf("element %s has no type. using string\n",xsdname);
+		xsdelem->m_type = FindType("string");
+		if (xsdelem->m_type == NULL)
+		{
+			delete xsdelem;
+			xsdelem = NULL;
+		}
 	}
 	return xsdelem;
 }
@@ -2079,6 +2083,7 @@ int main(int argc, char * argv[])
 	const char * xsdfilename = NULL;
 	char hfilename[256];
 	char cppfilename[256];
+	std::string tfluse;
 	for (int i = 1 ; i < argc ; i++)
 	{
 		const char * arg = argv[i];
@@ -2098,7 +2103,14 @@ int main(int argc, char * argv[])
 						}
 					}
 				break ;
-
+				
+				case 't':
+					if (strncmp(arg+1,"tfluse=",7) == 0)
+					{
+						tfluse = arg+1+7;
+					}
+				break ;
+				
 				default:
 					printf("unkown option \"%s\"\n",arg);
 				break ;
@@ -2174,11 +2186,18 @@ int main(int argc, char * argv[])
 		hfile.println("#include <stdio.h>");
 		hfile.println("#include <stdlib.h>");
 		hfile.println("#include <string.h>");
-		hfile.println("#include <libxml/parser.h>");
+		hfile.println("#include \"xmlparser.h\"");
 		hfile.println("#include \"xsdtypes.h\"");
 		hfile.println("#include <exception>");
 		hfile.println("#include <typeinfo>");
 		hfile.println();
+		if (!tfluse.empty())
+		{
+			cppfile.println("#if defined TFL_CONFIG_FROM_FILE");
+			cppfile.println("#include \"TFL_fileconfig.h\"");
+			cppfile.println("#endif");
+			cppfile.println("#ifdef %s",tfluse.c_str());
+		}
 		cppfile.println("#include \"%s\"",hfileinclude.c_str());
 		cppfile.println();
 		cppfile.println("#define for_each_child(child,node) for (xmlNodePtr child = node->children   ; child != NULL ; child = child->next)");
@@ -2246,6 +2265,10 @@ int main(int argc, char * argv[])
 #endif
 		hfile.printf("#endif // %s\n",hfiledefine.c_str());
 		hfile.close();
+		if (!tfluse.empty())
+		{
+			cppfile.println("#endif // %s",tfluse.c_str());
+		}
 		cppfile.close();
 	}
 	return 0 ;
@@ -2267,6 +2290,32 @@ void xsdType::GenAttrHeader(CppFile & out,int indent)
 	{
 		m_attributes.GenHeader(out,indent,"");
 	}
+}
+
+void xsdType::GenInitFixedAttr(CppFile & out,int indent)
+{
+	for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
+	{
+		xsdAttribute * a = *ai ;
+		if (!a->m_fixed.empty())
+		{
+			std::string arg = "\"";
+			arg += a->m_fixed;
+			arg += "\"";
+			xsdType::GenAssignment(out,indent,a->getCppName(),arg.c_str());
+		}
+	}
+}
+
+bool xsdType::HasFixedAttributes()
+{
+	for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
+	{
+		xsdAttribute * a = *ai ;
+		if (!a->m_fixed.empty())
+			return true;
+	}
+	return false;
 }
 
 void xsdType::GenAttrImpl(CppFile & out,Symtab & st)

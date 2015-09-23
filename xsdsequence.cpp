@@ -29,6 +29,8 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 		 */
 		out.iprintln(indent,"%s()",getCppName());
 		out.iprintln(indent++,"{");
+		if (m_parent != NULL && m_parent->HasFixedAttributes())
+			m_parent->GenInitFixedAttr(out,indent);
 		m_elements.GenInit(out,indent);
 		out.iprintln(--indent,"}");
 		/*
@@ -38,6 +40,14 @@ void xsdSequence::GenHeader(CppFile & out,int indent,const char * defaultstr)
 		out.iprintln(indent,"~%s()",getCppName());
 		out.iprintln(indent++,"{");
 		m_elements.GenDelete(out,indent);
+		out.iprintln(--indent,"}");
+	}
+	else
+	{
+		out.iprintln(indent,"%s()",getCppName());
+		out.iprintln(indent++,"{");
+		if (m_parent != NULL && m_parent->HasFixedAttributes())
+			m_parent->GenInitFixedAttr(out,indent);
 		out.iprintln(--indent,"}");
 	}
 	/*
@@ -98,6 +108,20 @@ void xsdSequence::GenImpl(CppFile & out,Symtab & st,const char * defaultstr)
 		return ;
 	if (m_parent->m_tag == type_complexExtension)
 		base = ((xsdComplexExtension*)m_parent)->m_base;
+	
+	elementIterator ei ;
+	for(ei = m_elements.begin() ; ei != m_elements.end() ; ei++)
+	{
+		xsdElement *e = *ei ;
+		if (!e->m_default.empty())
+		{
+			if (e->m_type->isScalar())
+				out.iprintln(1,"%s.set(%s);",e->getCppName(),e->m_default.c_str());
+			else
+				out.iprintln(1,"%s.sets(\"%s\");",e->getCppName(),e->m_default.c_str());
+		}
+	}
+	
 	if (base != NULL)
 	{
 		out.iprintln(1,"%s::Parse(node);",base->getCppName());

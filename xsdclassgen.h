@@ -405,6 +405,7 @@ public:
 	virtual void GenWrite(CppFile & out,Symtab & st);
 	virtual void GenAttrImpl(CppFile & out,Symtab & st);
 	virtual void GenWriteAttr(CppFile & out,int indent,xsdElement * elem);
+	virtual void GenInitFixedAttr(CppFile & out,int indent);
 	virtual void GenAttrHeader(CppFile & out,int indent);
 	virtual void GenLocal(CppFile & out,Symtab & st,const char * defaultstr) {}
 	virtual void GenAssignment(CppFile & out,int indent,xsdAttrElemBase & elem,const char * src);
@@ -412,7 +413,7 @@ public:
 	virtual bool CheckCycle(xsdElement * elem) { return false;}
 	virtual bool hasAttributes() { return !m_attributes.empty(); }
 	virtual void GetAttributes(xsdAttrList & lst) { lst = m_attributes;}
-
+	bool         HasFixedAttributes();
 	std::string m_ns;
 	std::string m_name ;
 	std::string m_cname;
@@ -898,7 +899,7 @@ public:
 	void GenLocal(CppFile & out,Symtab & st);
 	void GenInit(CppFile & out,int indent);
 	void GenDelete(CppFile & out,int indent);
-	bool isPtr() { return m_choice != NULL || m_isCyclic;}
+	bool isPtr() { return (m_choice != NULL || m_isCyclic) && !isArray();}
 	bool isChoice() { return m_choice != NULL;}
 	bool hasAttributes();
 	std::string m_choice_selector;
