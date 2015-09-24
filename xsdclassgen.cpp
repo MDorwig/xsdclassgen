@@ -2307,6 +2307,7 @@ void xsdType::GenInitFixedAttr(CppFile & out,int indent)
 	}
 }
 
+
 bool xsdType::HasFixedAttributes()
 {
 	for (attrIterator ai = m_attributes.begin() ; ai != m_attributes.end() ; ai++)
