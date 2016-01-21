@@ -1484,6 +1484,7 @@ void InstallXMLSchematypes(const char * href,xsdNamespace * ns)
 		ns->AddType(new xsdType("long",type_long,NULL,true));
 		ns->AddType(new xsdType("short",type_short,NULL,true));
 		ns->AddType(new xsdType("byte",type_byte,NULL,true));
+		ns->AddType(new xsdType("hexBinary",type_string,NULL,true));
 		ns->AddType(new xsdType("nonNegativeInteger",type_nonNegativeInteger,NULL,true));
 		ns->AddType(new xsdType("positiveInteger",type_positiveInteger,NULL,true));
 		ns->AddType(new xsdType("unsignedLong",type_unsignedLong,NULL,true));
